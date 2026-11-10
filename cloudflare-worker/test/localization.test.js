@@ -202,8 +202,8 @@ describe("asOfLabel", () => {
 
 describe("unavailableMessage", () => {
     it("localizes by language and falls back to English", () => {
-        expect(unavailableMessage("de-DE")).toBe("Spielplan noch nicht verfügbar");
-        expect(unavailableMessage("xx-YY")).toBe("Schedule not yet available");
+        expect(unavailableMessage("de-DE")).toBe("Spielplan folgt");
+        expect(unavailableMessage("xx-YY")).toBe("Schedule not out yet");
     });
 });
 

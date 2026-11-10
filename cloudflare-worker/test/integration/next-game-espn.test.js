@@ -182,7 +182,7 @@ describe("/next-game on ESPN", () => {
             found: false,
             team_name: "Off Season U",
             team_badge: "https://logos.test/501.png",
-            not_found_message: "Schedule not yet available",
+            not_found_message: "Schedule not out yet",
         });
         expect(calls).toContain(
             `${WBB}/teams/501/schedule?season=2002&seasontype=2`,

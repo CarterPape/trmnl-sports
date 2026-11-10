@@ -49,24 +49,24 @@ const OUTAGE_MESSAGES = {
     zh: "无法获取赛程",
 };
 
-// Shown when a team has no upcoming games at all (typically the off-season before the next schedule is published), keyed like NOT_FOUND_MESSAGES.
+// Shown when a team has no upcoming games at all (typically the off-season before the next schedule is published), keyed like NOT_FOUND_MESSAGES. Kept no longer than OUTAGE_MESSAGES: the templates don't wrap it.
 const UNAVAILABLE_MESSAGES = {
-    en: "Schedule not yet available",
-    es: "Calendario aún no disponible",
-    de: "Spielplan noch nicht verfügbar",
-    fr: "Calendrier pas encore disponible",
-    it: "Calendario non ancora disponibile",
-    pt: "Calendário ainda não disponível",
-    nl: "Schema nog niet beschikbaar",
-    sv: "Schemat är inte publicerat än",
-    da: "Programmet er ikke udgivet endnu",
-    no: "Terminlisten er ikke publisert ennå",
-    fi: "Aikataulu ei vielä saatavilla",
-    pl: "Harmonogram jeszcze niedostępny",
-    ru: "Расписание ещё не опубликовано",
-    ja: "日程は未発表です",
-    ko: "일정이 아직 발표되지 않음",
-    zh: "赛程尚未公布",
+    en: "Schedule not out yet",
+    es: "Calendario pendiente",
+    de: "Spielplan folgt",
+    fr: "Calendrier à venir",
+    it: "Calendario in arrivo",
+    pt: "Calendário em breve",
+    nl: "Schema volgt",
+    sv: "Schema kommer",
+    da: "Program følger",
+    no: "Terminliste kommer",
+    fi: "Aikataulu tulossa",
+    pl: "Harmonogram wkrótce",
+    ru: "Расписание скоро",
+    ja: "日程は未発表",
+    ko: "일정 미발표",
+    zh: "赛程未公布",
 };
 
 // "as of <time>" affixes for the staleness marker, keyed like NOT_FOUND_MESSAGES.

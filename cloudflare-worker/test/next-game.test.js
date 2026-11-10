@@ -136,7 +136,7 @@ describe("formatNoGame", () => {
                 invert: false,
                 trim: { x: 0, y: 0, w: 1, h: 1 },
                 leagueLabel: "NCAA Women's Basketball",
-                message: "Schedule not yet available",
+                message: "Schedule not out yet",
             }),
         ).toEqual({
             found: false,
@@ -145,7 +145,7 @@ describe("formatNoGame", () => {
             team_badge_trim: { x: 0, y: 0, w: 1, h: 1 },
             team_name: "UConn Huskies",
             team_league_label: "NCAA Women's Basketball",
-            not_found_message: "Schedule not yet available",
+            not_found_message: "Schedule not out yet",
         });
     });
 });

@@ -1,5 +1,5 @@
 {
-    "_note": "No upcoming games at all (off-season before the next schedule drops): 'Schedule not yet available'.",
+    "_note": "No upcoming games at all (off-season before the next schedule drops): 'Schedule not out yet'.",
     "found": false,
     "team_badge": "https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png",
     "team_badge_invert": false,
@@ -11,5 +11,5 @@
     },
     "team_name": "New York Yankees",
     "team_league_label": "MLB",
-    "not_found_message": "Schedule not yet available"
+    "not_found_message": "Schedule not out yet"
 }
