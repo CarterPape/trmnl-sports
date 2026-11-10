@@ -6,6 +6,7 @@ pape-docs/
 
 # Cloudflare wrangler cache
 cloudflare-worker/.wrangler/
+cloudflare-worker/.dev.vars
 cloudflare-worker/node_modules/
 
 # Build artifacts
