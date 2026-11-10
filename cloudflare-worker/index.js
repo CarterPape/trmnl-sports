@@ -59,7 +59,7 @@ const BADGE_ANALYSIS_CACHE_TTL = 30 * 86400; // 30 days
 // that many not-found responses share a single team lookup.
 const TEAM_META_CACHE_TTL = 30 * 86400; // 30 days
 
-const ESPN_ROUTED_CODES = new Set(["wbb", "mbb", "cfb"]);
+const ESPN_ROUTED_CODES = new Set(Object.keys(ESPN_LEAGUES));
 const ESPN_TEAM_CACHE_TTL = 30 * 86400;
 const ESPN_FAILURE_BACKOFF_TTL = 5 * 60;
 const ESPN_COOLDOWN_TTL = 15 * 60;

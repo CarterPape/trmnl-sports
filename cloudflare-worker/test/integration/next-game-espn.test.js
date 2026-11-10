@@ -295,7 +295,7 @@ describe("/next-game on ESPN", () => {
         expect(decodeDatapoint(captured[1]).upstream).toBe("cooldown");
     });
 
-    it("leaves a legacy id whose league isn't routed yet on TheSportsDB", async () => {
+    it("leaves a legacy id from a league ESPN doesn't carry on TheSportsDB", async () => {
         espnRoutes((url) => {
             if (url.includes("thesportsdb.com"))
                 return json({ schedule: [], lookup: [] });
@@ -303,7 +303,7 @@ describe("/next-game on ESPN", () => {
         });
         const { env, captured } = makeEnv();
 
-        await poll("135252|4424", env);
+        await poll("135253|4405", env);
         expect(decodeDatapoint(captured[0])).toMatchObject({
             provider: "sportsdb",
             idform: "legacy",
