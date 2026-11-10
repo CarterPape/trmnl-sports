@@ -1,0 +1,10 @@
+{
+    "_note": "A no-game message longer than one line fits in the narrow views: must wrap to two lines, not clip.",
+    "found": false,
+    "team_badge": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+    "team_badge_invert": false,
+    "team_badge_trim": { "x": 0, "y": 0, "w": 1, "h": 1 },
+    "team_name": "UConn Huskies",
+    "team_league_label": "NCAA Women's Basketball",
+    "not_found_message": "Aikataulu ei vielä käytettävissä tällä hetkellä"
+}

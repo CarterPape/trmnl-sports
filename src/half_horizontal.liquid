@@ -5,8 +5,8 @@
     {% render "badge", src: team_badge, invert: team_badge_invert, trim: team_badge_trim, size_class: "h--32 lg:h--48" %}
   </div>
   {% endif %}
-  <div class="flex flex--col no-shrink">
-    <span class="value lg:value--large">{{ not_found_message }}</span>
+  <div class="flex flex--col text--center" style="min-width: 0">
+    <span class="value lg:value--large" data-clamp="2">{{ not_found_message }}</span>
     {% render "stale_note", stale: stale, as_of_label: as_of_label %}
   </div>
 </div>

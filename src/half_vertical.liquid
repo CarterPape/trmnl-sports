@@ -9,8 +9,8 @@
     </div>
     {% endif %}
     <div class="row row--center">
-      <div class="flex flex--col no-shrink">
-        <span class="value lg:value--large">{{ not_found_message }}</span>
+      <div class="flex flex--col text--center" style="min-width: 0">
+        <span class="value lg:value--large" data-clamp="2">{{ not_found_message }}</span>
         {% render "stale_note", stale: stale, as_of_label: as_of_label %}
       </div>
     </div>
