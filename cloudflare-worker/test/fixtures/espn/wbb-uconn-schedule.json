@@ -1,0 +1,350 @@
+{
+  "requestedSeason": {
+    "year": 2027,
+    "type": 2,
+    "name": "Regular Season",
+    "displayName": "2026-27"
+  },
+  "events": [
+    {
+      "id": "401911736",
+      "date": "2026-11-02T22:00Z",
+      "timeValid": true,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_FINAL",
+              "state": "post"
+            }
+          },
+          "venue": {
+            "fullName": "PeoplesBank Arena"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "41",
+              "team": {
+                "id": "41",
+                "displayName": "UConn Huskies",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/41.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "172",
+              "team": {
+                "id": "172",
+                "displayName": "Cornell Big Red",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/172.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/172.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401911737",
+      "date": "2026-11-05T23:30Z",
+      "timeValid": true,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_FINAL",
+              "state": "post"
+            }
+          },
+          "venue": {
+            "fullName": "Crisler Center"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "130",
+              "team": {
+                "id": "130",
+                "displayName": "Michigan Wolverines",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/130.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/130.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "41",
+              "team": {
+                "id": "41",
+                "displayName": "UConn Huskies",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/41.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401911738",
+      "date": "2026-11-08T19:00Z",
+      "timeValid": true,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_FINAL",
+              "state": "post"
+            }
+          },
+          "venue": {
+            "fullName": "M&T Bank Center at Gampel Pavilion"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "41",
+              "team": {
+                "id": "41",
+                "displayName": "UConn Huskies",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/41.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "2294",
+              "team": {
+                "id": "2294",
+                "displayName": "Iowa Hawkeyes",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2294.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2294.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401911739",
+      "date": "2026-11-12T23:30Z",
+      "timeValid": true,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Schottenstein Center"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "194",
+              "team": {
+                "id": "194",
+                "displayName": "Ohio State Buckeyes",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/194.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/194.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "41",
+              "team": {
+                "id": "41",
+                "displayName": "UConn Huskies",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/41.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401906079",
+      "date": "2026-11-15T22:30Z",
+      "timeValid": true,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "KFC Yum! Center"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "97",
+              "team": {
+                "id": "97",
+                "displayName": "Louisville Cardinals",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/97.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/97.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "41",
+              "team": {
+                "id": "41",
+                "displayName": "UConn Huskies",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/41.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

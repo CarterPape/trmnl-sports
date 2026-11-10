@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
     asOfLabel,
     localizeDateLabel,
+    localizeDayLabel,
     localizeTimeLabel,
     notFoundMessage,
     outageMessage,
     parseLocale,
     parseTimeZone,
+    unavailableMessage,
 } from "../lib/localization.js";
 
 // Recent ICU (Node ≥ 18) puts a narrow no-break space (U+202F) before AM/PM in
@@ -195,5 +197,25 @@ describe("asOfLabel", () => {
             NOW,
         );
         expect(ko.endsWith(" 기준")).toBe(true);
+    });
+});
+
+describe("unavailableMessage", () => {
+    it("localizes by language and falls back to English", () => {
+        expect(unavailableMessage("de-DE")).toBe("Spielplan noch nicht verfügbar");
+        expect(unavailableMessage("xx-YY")).toBe("Schedule not yet available");
+    });
+});
+
+describe("localizeDayLabel", () => {
+    const NOW = Date.parse("2026-11-10T06:00:00Z");
+
+    it("judges today against the user's zone, not UTC", () => {
+        expect(localizeDayLabel("2026-11-09", "en-US", "America/Los_Angeles", NOW)).toBe("Today");
+        expect(localizeDayLabel("2026-11-10", "en-US", "UTC", NOW)).toBe("Today");
+    });
+
+    it("formats any other day as that calendar date", () => {
+        expect(localizeDayLabel("2026-11-28", "en-US", "Pacific/Honolulu", NOW)).toBe("Saturday, Nov 28");
     });
 });

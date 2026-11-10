@@ -1,0 +1,365 @@
+{
+  "requestedSeason": {
+    "year": 2026,
+    "type": 14358,
+    "name": "2026-27 German Bundesliga",
+    "displayName": "2026-27 German Bundesliga"
+  },
+  "events": [
+    {
+      "id": "401884736",
+      "date": "2026-11-20T19:30Z",
+      "timeValid": true,
+      "league": {
+        "name": "German Bundesliga"
+      },
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Allianz Arena"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "132",
+              "team": {
+                "id": "132",
+                "displayName": "Bayern Munich",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/132.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "122",
+              "team": {
+                "id": "122",
+                "displayName": "FC Cologne",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/122.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/122.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401915377",
+      "date": "2026-11-25T20:00Z",
+      "timeValid": true,
+      "league": {
+        "name": "UEFA Champions League"
+      },
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Decathlon Arena - Stade Pierre-Mauroy"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "166",
+              "team": {
+                "id": "166",
+                "displayName": "Lille",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/166.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/166.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "132",
+              "team": {
+                "id": "132",
+                "displayName": "Bayern Munich",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/132.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401884722",
+      "date": "2026-11-28T14:30Z",
+      "timeValid": true,
+      "league": {
+        "name": "German Bundesliga"
+      },
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Volksparkstadion"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "127",
+              "team": {
+                "id": "127",
+                "displayName": "Hamburg SV",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/127.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/127.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "132",
+              "team": {
+                "id": "132",
+                "displayName": "Bayern Munich",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/132.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401932935",
+      "date": "2026-12-01T19:45Z",
+      "timeValid": true,
+      "league": {
+        "name": "German Cup"
+      },
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Allianz Arena"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "132",
+              "team": {
+                "id": "132",
+                "displayName": "Bayern Munich",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/132.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "129",
+              "team": {
+                "id": "129",
+                "displayName": "Hertha Berlin",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/129.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/129.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401884500",
+      "date": "2027-05-22T13:30Z",
+      "timeValid": true,
+      "league": {
+        "name": "German Bundesliga"
+      },
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Allianz Arena"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "132",
+              "team": {
+                "id": "132",
+                "displayName": "Bayern Munich",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/132.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "125",
+              "team": {
+                "id": "125",
+                "displayName": "Eintracht Frankfurt",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500/125.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/soccer/500-dark/125.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

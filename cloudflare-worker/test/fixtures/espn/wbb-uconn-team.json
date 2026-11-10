@@ -1,0 +1,22 @@
+{
+  "team": {
+    "id": "41",
+    "displayName": "UConn Huskies",
+    "logos": [
+      {
+        "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+        "rel": [
+          "full",
+          "default"
+        ]
+      },
+      {
+        "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/41.png",
+        "rel": [
+          "full",
+          "dark"
+        ]
+      }
+    ]
+  }
+}

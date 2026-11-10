@@ -49,6 +49,26 @@ const OUTAGE_MESSAGES = {
     zh: "无法获取赛程",
 };
 
+// Shown when a team has no upcoming games at all (typically the off-season before the next schedule is published), keyed like NOT_FOUND_MESSAGES.
+const UNAVAILABLE_MESSAGES = {
+    en: "Schedule not yet available",
+    es: "Calendario aún no disponible",
+    de: "Spielplan noch nicht verfügbar",
+    fr: "Calendrier pas encore disponible",
+    it: "Calendario non ancora disponibile",
+    pt: "Calendário ainda não disponível",
+    nl: "Schema nog niet beschikbaar",
+    sv: "Schemat är inte publicerat än",
+    da: "Programmet er ikke udgivet endnu",
+    no: "Terminlisten er ikke publisert ennå",
+    fi: "Aikataulu ei vielä saatavilla",
+    pl: "Harmonogram jeszcze niedostępny",
+    ru: "Расписание ещё не опубликовано",
+    ja: "日程は未発表です",
+    ko: "일정이 아직 발표되지 않음",
+    zh: "赛程尚未公布",
+};
+
 // "as of <time>" affixes for the staleness marker, keyed like NOT_FOUND_MESSAGES.
 // `pre`/`post` place the marker around the localized timestamp — most languages
 // prefix it; Japanese/Korean suffix it (e.g. "19:00現在", "오후 7시 기준").
@@ -107,6 +127,11 @@ export function outageMessage(locale) {
     return OUTAGE_MESSAGES[lang] || OUTAGE_MESSAGES.en;
 }
 
+export function unavailableMessage(locale) {
+    const lang = locale.split("-")[0].toLowerCase();
+    return UNAVAILABLE_MESSAGES[lang] || UNAVAILABLE_MESSAGES.en;
+}
+
 // Capitalize the first character with locale-aware case mapping. Used to make
 // Intl.RelativeTimeFormat output ("today", "heute", "今日") render as a leading
 // capital where the locale supports it; locales with no case (Japanese, etc.)
@@ -128,13 +153,17 @@ export function ymdInZone(date, tz) {
 }
 
 export function localizeDateLabel(gameMs, locale, tz, nowMs = Date.now()) {
+    return localizeDayLabel(ymdInZone(new Date(gameMs), tz), locale, tz, nowMs);
+}
+
+// Label for a calendar day (YYYY-MM-DD) with no known time of day, judged against "today" in the user's zone.
+export function localizeDayLabel(ymd, locale, tz, nowMs = Date.now()) {
     const now = new Date(nowMs);
     const todayYmd = ymdInZone(now, tz);
     const tomorrowYmd = ymdInZone(new Date(now.getTime() + 86400000), tz);
-    const gameYmd = ymdInZone(new Date(gameMs), tz);
 
-    if (gameYmd === todayYmd || gameYmd === tomorrowYmd) {
-        const offset = gameYmd === todayYmd ? 0 : 1;
+    if (ymd === todayYmd || ymd === tomorrowYmd) {
+        const offset = ymd === todayYmd ? 0 : 1;
         try {
             const rtf = new Intl.RelativeTimeFormat(locale, {
                 numeric: "auto",
@@ -146,11 +175,11 @@ export function localizeDateLabel(gameMs, locale, tz, nowMs = Date.now()) {
     }
 
     return new Intl.DateTimeFormat(locale, {
-        timeZone: tz,
+        timeZone: "UTC",
         weekday: "long",
         month: "short",
         day: "numeric",
-    }).format(new Date(gameMs));
+    }).format(new Date(`${ymd}T12:00:00Z`));
 }
 
 export function localizeTimeLabel(gameMs, locale, tz) {

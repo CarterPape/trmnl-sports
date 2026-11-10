@@ -1,0 +1,214 @@
+{
+  "requestedSeason": {
+    "year": 2026,
+    "type": 2,
+    "name": "Regular Season",
+    "displayName": "2026"
+  },
+  "events": [
+    {
+      "id": "401856889",
+      "date": "2026-11-14T17:45Z",
+      "timeValid": true,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "FirstBank Stadium"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "238",
+              "team": {
+                "id": "238",
+                "displayName": "Vanderbilt Commodores",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/238.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/238.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "333",
+              "team": {
+                "id": "333",
+                "displayName": "Alabama Crimson Tide",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401856746",
+      "date": "2026-11-21T19:00Z",
+      "timeValid": true,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Bryant-Denny Stadium"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "333",
+              "team": {
+                "id": "333",
+                "displayName": "Alabama Crimson Tide",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "236",
+              "team": {
+                "id": "236",
+                "displayName": "Chattanooga Mocs",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/236.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/236.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401856757",
+      "date": "2026-11-28T05:00Z",
+      "timeValid": false,
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "name": "STATUS_SCHEDULED",
+              "state": "pre"
+            }
+          },
+          "venue": {
+            "fullName": "Bryant-Denny Stadium"
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "id": "333",
+              "team": {
+                "id": "333",
+                "displayName": "Alabama Crimson Tide",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "homeAway": "away",
+              "id": "2",
+              "team": {
+                "id": "2",
+                "displayName": "Auburn Tigers",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ]
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2.png",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
