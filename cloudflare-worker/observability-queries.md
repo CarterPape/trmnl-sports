@@ -15,7 +15,7 @@ This file is the canonical record of the **AE column contract** plus the canonic
 | `blob1` | endpoint | same value as `index1` (kept as a blob for uniform `GROUP BY`) |
 | `blob2` | outcome | `ok` / `stale` / `short_query` / `missing_team` / `upstream_fail` / `rate_limited` / `cors_preflight` / `method_not_allowed` / `not_found` / `error` (`stale` = served last-known-good because upstream failed) |
 | `blob3` | cache | `none` / `hit` / `miss` / `stale` / `rebuild` (`stale` = served a durable entry past its freshness window; `rebuild` = this request paid the ~20-call team-index fan-out) |
-| `blob4` | upstream | `none` / `ok` / `fail` / `partial` |
+| `blob4` | upstream | `none` / `ok` / `fail` / `partial` / `limited` (our `ESPN_LIMITER` said no) / `cooldown` (ESPN 403/429'd this location in the last 15 min) / `backoff` (this team's fetch failed in the last 5 min) |
 | `blob5` | method | `GET` / `POST` / `OPTIONS` |
 | `blob6` | team | configured team ID, `next-game` only (public ID, not PII) |
 | `blob7` | type | `any` / `home` / `away` |
@@ -24,12 +24,14 @@ This file is the canonical record of the **AE column contract** plus the canonic
 | `blob10` | client | **descriptive** UA bucket: `faraday` / `ruby` / `curl` / `browser` / `other`. ⚠️ NOT provenance — TRMNL polls with both `ruby` (device-checkin, the bulk of real traffic) and `faraday` (preview/`team=0`), and our local tooling shares those UAs. Do not infer test/real from this. |
 | `blob11` | source | `test` / `prod` — `test` **only** when `?test=1` is present (our tools/manual hits set it); everything else is `prod`. (Earlier this also auto-tagged the `ruby`/`curl` buckets as test, which hid real TRMNL device traffic — removed.) |
 | `blob12` | device | `trmnl.device.friendly_id` (e.g. `93B2E9`), `next-game` only. **Populated only by real TRMNL device polls** — local `trmnlp` sends the literal `{{...}}` placeholder (not interpolated) and curl sends nothing, both stored as `''`. This is the reliable real-install signal. |
+| `blob13` | provider | `next-game` only: `espn` / `sportsdb`, whichever served the schedule |
+| `blob14` | idform | `next-game` only: `espn` (install stores `espn\|code\|id`) / `legacy` (stores a TheSportsDB id) |
 | `double1` | latencyMs | wall-clock request duration |
 | `double2` | status | HTTP status code |
-| `double3` | upstreamCalls | primary SportsDB calls issued (0, 1, or ~20 on a teams rebuild) |
+| `double3` | upstreamCalls | upstream calls issued: SportsDB (0, 1, or ~20 on a teams rebuild) or ESPN (0–3 per schedule refresh, +1 for a team record) |
 | `double4` | upstreamFails | how many of those calls failed |
 
-Extension point: new dimensions append at `blob13+` / `double5+` (e.g. sub-fetch volume from `fetchTeamMeta`/`shouldInvertBadge`, deliberately not tracked in v1).
+Extension point: new dimensions append at `blob15+` / `double5+` (e.g. sub-fetch volume from `fetchTeamMeta`/`shouldInvertBadge`, deliberately not tracked in v1).
 
 **Reading real (non-test) traffic — use `device`, not `client`/`source`.** The UA buckets cannot separate real TRMNL polls from our own tooling (both use `ruby`/`faraday`), so the gold-standard real-install filter on `next-game` is **`AND blob12 != ''`** (a populated friendly_id ⇒ a real device poll; excludes our local trmnlp/curl, which lack one). `AND blob11 = 'prod'` additionally drops anything explicitly `?test=1`-marked, but on its own it now *includes* our un-tagged local tooling — so prefer the `device` filter, or combine both. The Workers Logs line carries the raw `ua` + `device` so buckets can be refined later without redeploying.
 

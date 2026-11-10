@@ -21,6 +21,7 @@ export {
 export function makeEnv({
     rateLimit = true, // RATE_LIMITER.limit() → { success: rateLimit }
     rateLimitThrows = false, // make .limit() throw, to force the 500 path
+    espnLimit = true, // ESPN_LIMITER.limit() → { success: espnLimit }
     ...rest
 } = {}) {
     const captured = [];
@@ -31,6 +32,9 @@ export function makeEnv({
                 if (rateLimitThrows) throw new Error("💥 rate limiter boom");
                 return { success: rateLimit };
             },
+        },
+        ESPN_LIMITER: {
+            limit: async () => ({ success: espnLimit }),
         },
         ANALYTICS: {
             writeDataPoint: (dp) => captured.push(dp),
@@ -58,6 +62,8 @@ export function decodeDatapoint(dp) {
         client,
         source,
         device,
+        provider,
+        idform,
     ] = dp.blobs;
     const [latencyMs, status, upstreamCalls, upstreamFails] = dp.doubles;
     return {
@@ -74,6 +80,8 @@ export function decodeDatapoint(dp) {
         client,
         source,
         device,
+        provider,
+        idform,
         latencyMs,
         status,
         upstreamCalls,

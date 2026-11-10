@@ -1,0 +1,29 @@
+{
+    "_note": "ESPN game with timeValid:false (TBD kickoff): day label, empty time label.",
+    "found": true,
+    "home_team": "Alabama Crimson Tide",
+    "away_team": "Chattanooga Mocs",
+    "home_team_badge": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+    "away_team_badge": "https://a.espncdn.com/i/teamlogos/ncaa/500/236.png",
+    "home_team_badge_invert": false,
+    "away_team_badge_invert": false,
+    "home_team_badge_trim": {
+        "x": 0.02,
+        "y": 0.04,
+        "w": 0.96,
+        "h": 0.92
+    },
+    "away_team_badge_trim": {
+        "x": 0.04,
+        "y": 0.098,
+        "w": 0.92,
+        "h": 0.804
+    },
+    "start_utc_timestamp": "2026-11-21T19:00:00.000Z",
+    "date_label": "Saturday, Nov 28",
+    "time_label": "",
+    "venue": "Bryant-Denny Stadium",
+    "league": "Regular Season",
+    "team_name": "Alabama Crimson Tide",
+    "team_league_label": "NCAA Football"
+}

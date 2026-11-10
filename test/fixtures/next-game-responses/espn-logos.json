@@ -1,0 +1,29 @@
+{
+    "_note": "Live ESPN payload (UConn WBB, 2026-11-10): ESPN 500px logos through badge trim/invert.",
+    "found": true,
+    "home_team": "Ohio State Buckeyes",
+    "away_team": "UConn Huskies",
+    "home_team_badge": "https://a.espncdn.com/i/teamlogos/ncaa/500/194.png",
+    "away_team_badge": "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+    "home_team_badge_invert": false,
+    "away_team_badge_invert": false,
+    "home_team_badge_trim": {
+        "x": 0.04,
+        "y": 0.046,
+        "w": 0.92,
+        "h": 0.906
+    },
+    "away_team_badge_trim": {
+        "x": 0.132,
+        "y": 0.04,
+        "w": 0.736,
+        "h": 0.92
+    },
+    "start_utc_timestamp": "2026-11-12T23:30:00.000Z",
+    "date_label": "Thursday, Nov 12",
+    "time_label": "6:30 p.m.",
+    "venue": "Schottenstein Center",
+    "league": "Regular Season",
+    "team_name": "UConn Huskies",
+    "team_league_label": "NCAA Women's Basketball"
+}

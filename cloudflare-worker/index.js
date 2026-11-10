@@ -13,12 +13,31 @@ import {
     outageMessage,
     parseLocale,
     parseTimeZone,
+    unavailableMessage,
 } from "./lib/localization.js";
 import { classifyNextGameCache, selectNextGame } from "./lib/schedule.js";
 import { formatEvent } from "./lib/format.js";
 import { parseTeamParam, searchTeams } from "./lib/search.js";
 import { computeBadgeStats, NO_BADGE_TRIM } from "./lib/badge.js";
 import { classifyClient, classifySource } from "./lib/client.js";
+import {
+    mergeSchedules,
+    nextSeasonUrl,
+    parseSchedule,
+    parseTeam,
+    scheduleUrls,
+    teamUrl,
+} from "./lib/espn.js";
+import { ESPN_LEAGUES } from "./lib/leagues.js";
+import {
+    formatNextGame,
+    formatNoGame,
+    scheduleTtlSeconds,
+    selectNextGame as selectNextEspnGame,
+    upcomingEvents,
+} from "./lib/next-game.js";
+import { espnTeamParam, resolveTeamParam } from "./lib/team-param.js";
+import LEGACY_TEAM_IDS from "./lib/legacy-team-ids.json";
 
 const API_BASE = "https://www.thesportsdb.com/api/v2/json";
 
@@ -39,6 +58,11 @@ const BADGE_ANALYSIS_CACHE_TTL = 30 * 86400; // 30 days
 // Cache the team metadata lookup separately from the not-found response so
 // that many not-found responses share a single team lookup.
 const TEAM_META_CACHE_TTL = 30 * 86400; // 30 days
+
+const ESPN_ROUTED_CODES = new Set(["wbb", "mbb", "cfb"]);
+const ESPN_TEAM_CACHE_TTL = 30 * 86400;
+const ESPN_FAILURE_BACKOFF_TTL = 5 * 60;
+const ESPN_COOLDOWN_TTL = 15 * 60;
 
 function jsonResponse(data, { status = 200, cors = false, maxAge = 0 } = {}) {
     const headers = { "Content-Type": "application/json" };
@@ -294,6 +318,234 @@ async function outageTeamMeta(teamId, leagueIdFromUrl, env, hostname, ctx) {
     };
 }
 
+// ── ESPN ──────────────────────────────────────────────────────────────────
+
+function cacheEntry(payload, maxAgeS, fetchedAtMs = Date.now()) {
+    return new Response(JSON.stringify(payload), {
+        headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": `public, max-age=${maxAgeS}`,
+            "X-Fetched-At": String(fetchedAtMs),
+        },
+    });
+}
+
+// One outbound ESPN call, gated by the per-colo cooldown and our own rate limit. Never throws.
+async function espnFetch(url, env, hostname, ctx, m) {
+    const cooldownKey = buildCacheKey(hostname, "/_espn-cooldown", {});
+    if (await caches.default.match(cooldownKey)) {
+        m.upstream = "cooldown";
+        return null;
+    }
+    const { success } = (await env.ESPN_LIMITER?.limit({ key: "espn" })) ?? {
+        success: true,
+    };
+    if (!success) {
+        m.upstream = "limited";
+        return null;
+    }
+
+    m.upstreamCalls += 1;
+    try {
+        const res = await fetch(url);
+        if (res.ok) {
+            const body = await res.json();
+            if (m.upstream === "none") m.upstream = "ok";
+            return body;
+        }
+        if (res.status === 403 || res.status === 429) {
+            ctx.waitUntil(
+                caches.default.put(
+                    cooldownKey,
+                    cacheEntry({}, ESPN_COOLDOWN_TTL),
+                ),
+            );
+        }
+    } catch {
+        // Network failure or a non-JSON body — counted as a failure below.
+    }
+    m.upstreamFails += 1;
+    m.upstream = "fail";
+    return null;
+}
+
+async function fetchEspnSchedule(league, espnId, env, hostname, ctx, m) {
+    const results = await Promise.all(
+        scheduleUrls(league, espnId).map((u) =>
+            espnFetch(u, env, hostname, ctx, m),
+        ),
+    );
+    if (results.some((r) => r === null)) return null;
+
+    let events = mergeSchedules(...results.map(parseSchedule));
+    const next = nextSeasonUrl(league, espnId, results[0]);
+    if (next && upcomingEvents(events).length === 0) {
+        const nextSeason = await espnFetch(next, env, hostname, ctx, m);
+        if (nextSeason)
+            events = mergeSchedules(events, parseSchedule(nextSeason));
+    }
+    m.upstream = "ok";
+    return events;
+}
+
+// → { events, fetchedAtMs, stale } | null (nothing cached and nothing fetched)
+async function getEspnSchedule(ref, env, hostname, ctx, m) {
+    const league = ESPN_LEAGUES[ref.code];
+    const key = buildCacheKey(hostname, "/_espn-schedule", {
+        code: ref.code,
+        id: ref.espnId,
+    });
+    const backoffKey = buildCacheKey(hostname, "/_espn-backoff", {
+        code: ref.code,
+        id: ref.espnId,
+    });
+
+    const cached = await caches.default.match(key);
+    let stored = null;
+    if (cached) {
+        try {
+            stored = {
+                events: await cached.json(),
+                fetchedAtMs: Number(cached.headers.get("X-Fetched-At")) || 0,
+            };
+        } catch {
+            stored = null;
+        }
+    }
+    if (
+        stored &&
+        Date.now() - stored.fetchedAtMs <
+            scheduleTtlSeconds(stored.events) * 1000
+    ) {
+        m.cache = "hit";
+        return { ...stored, stale: false };
+    }
+
+    m.cache = "miss";
+    const backingOff = await caches.default.match(backoffKey);
+    const events = backingOff
+        ? null
+        : await fetchEspnSchedule(league, ref.espnId, env, hostname, ctx, m);
+    if (backingOff) m.upstream = "backoff";
+
+    if (events) {
+        ctx.waitUntil(
+            caches.default.put(key, cacheEntry(events, LKG_CACHE_TTL)),
+        );
+        return { events, fetchedAtMs: Date.now(), stale: false };
+    }
+    if (!backingOff) {
+        ctx.waitUntil(
+            caches.default.put(
+                backoffKey,
+                cacheEntry({}, ESPN_FAILURE_BACKOFF_TTL),
+            ),
+        );
+    }
+    if (!stored) return null;
+    m.cache = "stale";
+    return { ...stored, stale: true };
+}
+
+async function getEspnTeam(
+    ref,
+    env,
+    hostname,
+    ctx,
+    m,
+    { cacheOnly = false } = {},
+) {
+    const key = buildCacheKey(hostname, "/_espn-team", {
+        code: ref.code,
+        id: ref.espnId,
+    });
+    const cached = await caches.default.match(key);
+    if (cached) return await cached.json();
+    if (cacheOnly) return null;
+
+    const json = await espnFetch(
+        teamUrl(ESPN_LEAGUES[ref.code], ref.espnId),
+        env,
+        hostname,
+        ctx,
+        m,
+    );
+    const team = parseTeam(json);
+    if (team) {
+        ctx.waitUntil(
+            caches.default.put(key, cacheEntry(team, ESPN_TEAM_CACHE_TTL)),
+        );
+    }
+    return team;
+}
+
+async function handleEspnNextGame(ref, { type, locale, tz }, url, env, ctx, m) {
+    const hostname = url.hostname;
+    const leagueLabel = ESPN_LEAGUES[ref.code].label;
+    const schedule = await getEspnSchedule(ref, env, hostname, ctx, m);
+
+    if (!schedule) {
+        m.outcome = "upstream_fail";
+        const team = await getEspnTeam(ref, env, hostname, ctx, m, {
+            cacheOnly: true,
+        });
+        const { invert, trim } = await analyzeBadge(team?.badge, hostname, ctx);
+        return jsonResponse({
+            ...formatNoGame({
+                team,
+                invert,
+                trim,
+                leagueLabel,
+                message: outageMessage(locale),
+            }),
+            outage: true,
+        });
+    }
+
+    const event = selectNextEspnGame(schedule.events, type, ref.espnId, tz);
+    let payload;
+    if (event) {
+        const [home, away] = await Promise.all([
+            analyzeBadge(event.home.badge, hostname, ctx),
+            analyzeBadge(event.away.badge, hostname, ctx),
+        ]);
+        payload = formatNextGame(event, {
+            teamId: ref.espnId,
+            homeInvert: home.invert,
+            awayInvert: away.invert,
+            homeTrim: home.trim,
+            awayTrim: away.trim,
+            locale,
+            tz,
+            leagueLabel,
+        });
+    } else {
+        const team = await getEspnTeam(ref, env, hostname, ctx, m);
+        const { invert, trim } = await analyzeBadge(team?.badge, hostname, ctx);
+        const nothingScheduled =
+            upcomingEvents(schedule.events, tz).length === 0;
+        payload = formatNoGame({
+            team,
+            invert,
+            trim,
+            leagueLabel,
+            message: nothingScheduled
+                ? unavailableMessage(locale)
+                : notFoundMessage(locale),
+        });
+    }
+
+    if (schedule.stale) {
+        m.outcome = "stale";
+        return jsonResponse({
+            ...payload,
+            stale: true,
+            as_of_label: asOfLabel(schedule.fetchedAtMs, locale, tz),
+        });
+    }
+    return jsonResponse(payload, { maxAge: NEXT_GAME_CACHE_TTL });
+}
+
 // GET /next-game?team=TEAM_ID|LEAGUE_ID&type=any|home|away
 // Returns the next matching game for the given team, or { found: false }.
 //
@@ -315,6 +567,20 @@ async function handleNextGame(url, env, ctx, m) {
     // absent. Empty/placeholder ⇒ not a real device poll.
     const deviceRaw = url.searchParams.get("device") || "";
     const device = deviceRaw.includes("{{") ? "" : deviceRaw;
+
+    const ref = resolveTeamParam(teamParam, LEGACY_TEAM_IDS, ESPN_ROUTED_CODES);
+    if (ref?.provider === "espn") {
+        m.type = type;
+        m.tz = tz;
+        m.locale = locale;
+        m.device = device;
+        m.provider = "espn";
+        m.idform = ref.idform;
+        m.team = ref.legacyTeamId || espnTeamParam(ref.code, ref.espnId);
+        return handleEspnNextGame(ref, { type, locale, tz }, url, env, ctx, m);
+    }
+    m.provider = "sportsdb";
+    m.idform = "legacy";
 
     // The leagueId half drives the league display label in the title bar so it
     // stays consistent with the dropdown (and with the team's home league, not
@@ -489,7 +755,7 @@ async function handleNextGame(url, env, ctx, m) {
 //             | error  (stale = served last-known-good because upstream failed)
 //   cache     none | hit | miss | stale | rebuild  (stale = served a durable
 //             entry past its freshness window; rebuild = team-index fan-out ran)
-//   upstream  none | ok | fail | partial
+//   upstream  none | ok | fail | partial | limited | cooldown | backoff
 //   client    trmnl | trmnlp | curl | browser | other  (UA bucket)
 //   source    test | prod  (test = ?test=1, or one of our own dev tools)
 function newMetrics(endpoint, method) {
@@ -511,6 +777,8 @@ function newMetrics(endpoint, method) {
         tz: "",
         locale: "",
         device: "", // trmnl.device.friendly_id; populated only by real TRMNL device polls
+        provider: "", // espn | sportsdb (next-game only)
+        idform: "", // espn | legacy: which team-param form the install stores
     };
 }
 
@@ -533,6 +801,8 @@ function emit(m, env, request) {
             tz: m.tz || null,
             locale: m.locale || null,
             device: m.device || null, // friendly_id; null for non-device traffic
+            provider: m.provider || null,
+            idform: m.idform || null,
             errorName: m.errorName, // omitted by JSON unless outcome === "error"
             client: m.client,
             source: m.source,
@@ -560,6 +830,8 @@ function emit(m, env, request) {
             m.client, // blob10
             m.source, // blob11
             m.device, // blob12 (trmnl.device.friendly_id; "" for non-device traffic)
+            m.provider, // blob13
+            m.idform, // blob14
         ],
         doubles: [
             m.latencyMs, // double1
