@@ -175,7 +175,7 @@ async function fetchTeamMeta(teamId, env, hostname, ctx) {
 
 // Every supported team, built from one ESPN list call per league and cached per POP, so search is a local substring scan.
 async function getTeamIndex(env, hostname, ctx, m) {
-    const key = buildCacheKey(hostname, "/_team-index-espn-v2", {});
+    const key = buildCacheKey(hostname, "/_team-index-espn-v3", {});
     const cached = await caches.default.match(key);
     if (cached) return await cached.json();
     m.cache = "rebuild";
@@ -196,7 +196,7 @@ async function getTeamIndex(env, hostname, ctx, m) {
         json ? parseTeamList(json, codes[i], ESPN_LEAGUES[codes[i]].label) : [],
     );
     for (const team of index) {
-        team.tier = searchTier(team, divisions ?? { fbs: NO_IDS, fcs: NO_IDS });
+        team.tier = searchTier(team, divisions);
     }
 
     ctx.waitUntil(
@@ -204,8 +204,6 @@ async function getTeamIndex(env, hostname, ctx, m) {
     );
     return index;
 }
-
-const NO_IDS = new Set();
 
 // → { fbs, fcs } id sets, or null when either is unavailable or parses empty.
 async function fetchCfbDivisions(env, hostname, ctx, m) {
@@ -238,7 +236,7 @@ async function handleTeamsSearch(url, request, env, ctx, m) {
     }
     const q = qRaw.toLowerCase();
 
-    const key = buildCacheKey(url.hostname, "/teams", { q, v: "espn-tiers" });
+    const key = buildCacheKey(url.hostname, "/teams", { q, v: "espn-tiers-2" });
     const cached = await caches.default.match(key);
     // Stamp BEFORE returning the cached Response — it carries no metadata.
     if (cached) {

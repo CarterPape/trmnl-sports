@@ -19,6 +19,7 @@ const json = (body, status = 200) =>
     });
 const STANDINGS = "https://site.api.espn.com/apis/v2/sports/football/college-football/standings";
 const CFB_TEAMS = `${ESPN}/football/college-football/teams?limit=1000`;
+const MBB_TEAMS = `${ESPN}/basketball/mens-college-basketball/teams?limit=1000`;
 const division = (group) => `${STANDINGS}?group=${group}`;
 const league = (teams) => ({
     sports: [{ leagues: [{ teams }] }],
@@ -29,7 +30,7 @@ const roster = (...ids) => ({
         { standings: { entries: ids.map((id) => ({ team: { id }, stats: [] })) } },
     ],
 });
-const INDEX_KEY = "https://worker.test/_cache/_team-index-espn-v2?";
+const INDEX_KEY = "https://worker.test/_cache/_team-index-espn-v3?";
 
 async function search(query, env) {
     const ctx = createExecutionContext();
@@ -51,7 +52,7 @@ afterEach(async () => {
     await caches.default.delete(INDEX_KEY);
     for (const q of ["bulls", "warriors", "hornets"]) {
         await caches.default.delete(
-            `https://worker.test/_cache/teams?q=${q}&v=espn-tiers`,
+            `https://worker.test/_cache/teams?q=${q}&v=espn-tiers-2`,
         );
     }
 });
@@ -113,10 +114,16 @@ describe("/teams on ESPN", () => {
     it("still answers, pro first, when the division rosters fail", async () => {
         const cfb = league([
             { team: { id: "2084", displayName: "Buffalo Bulls" } },
+            { team: { id: "58", displayName: "South Florida Bulls" } },
+        ]);
+        const mbb = league([
+            { team: { id: "2084", displayName: "Buffalo Bulls" } },
+            { team: { id: "58", displayName: "South Florida Bulls" } },
         ]);
         installFetchMock((url) => {
             if (url === NBA_TEAMS) return json(nbaTeams);
             if (url === CFB_TEAMS) return json(cfb);
+            if (url === MBB_TEAMS) return json(mbb);
             if (url.startsWith(STANDINGS)) return json({}, 500);
             return json(emptyLeague);
         });
@@ -124,7 +131,13 @@ describe("/teams on ESPN", () => {
 
         const { body } = await search("bulls", env);
 
-        expect(body.map((m) => m.id)).toEqual(["espn|nba|4", "espn|cfb|2084"]);
+        expect(body.map((m) => m.id)).toEqual([
+            "espn|nba|4",
+            "espn|mbb|2084",
+            "espn|cfb|2084",
+            "espn|mbb|58",
+            "espn|cfb|58",
+        ]);
         expect(decodeDatapoint(captured[0]).upstream).toBe("partial");
     });
 

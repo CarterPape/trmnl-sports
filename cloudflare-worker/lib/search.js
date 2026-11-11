@@ -18,9 +18,11 @@ export function matchRank(team, q) {
     return RANK.substring;
 }
 
-// ESPN shares one id per school across sports, so a school's football division ranks its basketball rows too.
-export function searchTier(team, { fbs, fcs }) {
+// ESPN shares one id per school across sports, so a school's football division ranks its basketball rows too. Without divisions, every college ties.
+export function searchTier(team, divisions) {
     if (!ESPN_LEAGUES[team.code]?.college) return TIER.pro;
+    if (!divisions) return TIER.otherDivisionI;
+    const { fbs, fcs } = divisions;
     if (fbs.has(team.espnId)) return TIER.fbs;
     if (team.code !== "cfb" || fcs.has(team.espnId)) {
         return TIER.otherDivisionI;

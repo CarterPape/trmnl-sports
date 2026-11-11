@@ -97,6 +97,16 @@ describe("searchTier", () => {
         expect(tierOf("mbb", "2250")).toBe(TIER.otherDivisionI);
     });
 
+    it("ties every college when divisions are unavailable", () => {
+        expect(searchTier({ code: "cfb", espnId: "2071" }, null)).toBe(
+            TIER.otherDivisionI,
+        );
+        expect(searchTier({ code: "mbb", espnId: "41" }, null)).toBe(
+            TIER.otherDivisionI,
+        );
+        expect(searchTier({ code: "nba", espnId: "4" }, null)).toBe(TIER.pro);
+    });
+
     it("sinks football outside FBS and FCS to the bottom", () => {
         expect(tierOf("cfb", "2071")).toBe(TIER.lowerDivision);
     });
