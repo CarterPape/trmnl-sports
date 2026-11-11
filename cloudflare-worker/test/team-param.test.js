@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { espnTeamParam, resolveTeamParam } from "../lib/team-param.js";
+import {
+    espnTeamParam,
+    parseTeamParam,
+    resolveTeamParam,
+} from "../lib/team-param.js";
 
 const LEGACY = { "150726|5789": "wbb|41", "135252|4424": "mlb|2" };
 const ROUTED = new Set(["wbb"]);
@@ -65,5 +69,39 @@ describe("espnTeamParam", () => {
         expect(
             resolveTeamParam(espnTeamParam("cfb", "333"), LEGACY, ROUTED),
         ).toMatchObject({ code: "cfb", espnId: "333" });
+    });
+});
+
+describe("parseTeamParam", () => {
+    it("parses a real-install param carrying TRMNL's ::label suffix", () => {
+        expect(parseTeamParam("135252|4424::Boston Red Sox (MLB)")).toEqual({
+            teamId: "135252",
+            leagueId: 4424,
+        });
+    });
+
+    it("parses the clean ID|LEAGUE shape", () => {
+        expect(parseTeamParam("135252|4424")).toEqual({
+            teamId: "135252",
+            leagueId: 4424,
+        });
+    });
+
+    it("yields a null leagueId when the league half is absent", () => {
+        expect(parseTeamParam("135252")).toEqual({
+            teamId: "135252",
+            leagueId: null,
+        });
+    });
+
+    it("yields an empty teamId and null leagueId for an empty param", () => {
+        expect(parseTeamParam("")).toEqual({ teamId: "", leagueId: null });
+    });
+
+    it("yields a null leagueId (not NaN) when the league half isn't numeric", () => {
+        expect(parseTeamParam("135252|nonsense")).toEqual({
+            teamId: "135252",
+            leagueId: null,
+        });
     });
 });

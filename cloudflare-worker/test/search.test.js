@@ -1,47 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { matchRank, parseTeamParam, searchTeams } from "../lib/search.js";
-
-describe("parseTeamParam", () => {
-    it("parses a real-install param carrying TRMNL's ::label suffix", () => {
-        // TRMNL stores the picked dropdown option as value::label, so a real
-        // device poll sends ID|LEAGUE::Team Name (League) — not the clean
-        // ID|LEAGUE we use in tests/curl. Number() of "4424::Boston…" is NaN
-        // (pape-docs/0081); the leading integer must be parsed out.
-        expect(parseTeamParam("135252|4424::Boston Red Sox (MLB)")).toEqual({
-            teamId: "135252",
-            leagueId: 4424,
-        });
-    });
-
-    it("parses the clean ID|LEAGUE shape (our test/curl traffic)", () => {
-        expect(parseTeamParam("135252|4424")).toEqual({
-            teamId: "135252",
-            leagueId: 4424,
-        });
-    });
-
-    it("yields a null leagueId when the league half is absent", () => {
-        expect(parseTeamParam("135252")).toEqual({
-            teamId: "135252",
-            leagueId: null,
-        });
-    });
-
-    it("yields an empty teamId and null leagueId for an empty param", () => {
-        expect(parseTeamParam("")).toEqual({ teamId: "", leagueId: null });
-    });
-
-    it("yields a null leagueId (not NaN) when the league half isn't numeric", () => {
-        expect(parseTeamParam("135252|nonsense")).toEqual({
-            teamId: "135252",
-            leagueId: null,
-        });
-    });
-});
+import { matchRank, searchTeams } from "../lib/search.js";
 
 describe("matchRank", () => {
-    const bulls = { strTeam: "Chicago Bulls" };
+    const bulls = { name: "Chicago Bulls" };
 
     it("ranks a team-name prefix highest (0)", () => {
         expect(matchRank(bulls, "chicago")).toBe(0);
@@ -57,52 +19,54 @@ describe("matchRank", () => {
 });
 
 describe("searchTeams", () => {
-    // searchBlob is "name | alternate | keywords", lowercased, as built by
-    // getTeamIndex. `q` is passed pre-lowercased by the caller.
     const index = [
         {
-            idTeam: "1",
-            idLeague: "10",
-            strTeam: "Chicago Bulls",
+            code: "nba",
+            espnId: "4",
+            name: "Chicago Bulls",
             leagueLabel: "NBA",
-            searchBlob: "chicago bulls |  | ",
+            searchBlob: "chicago bulls | chicago | bulls | bulls | chi",
         },
         {
-            idTeam: "2",
-            idLeague: "11",
-            strTeam: "Chicago Bears",
+            code: "nfl",
+            espnId: "3",
+            name: "Chicago Bears",
             leagueLabel: "NFL",
-            searchBlob: "chicago bears |  | ",
+            searchBlob: "chicago bears | chicago | bears | bears | chi",
         },
         {
-            idTeam: "4",
-            idLeague: "12",
-            strTeam: "Red Star",
-            leagueLabel: "Test",
-            searchBlob: "red star |  | bullseye",
+            code: "mls",
+            espnId: "9",
+            name: "Red Star",
+            leagueLabel: "MLS",
+            searchBlob: "red star | bullseye",
         },
     ];
 
-    it("returns xhrSelectSearch-shaped entries", () => {
+    it("returns xhrSelectSearch entries carrying an espn team param", () => {
         const [first] = searchTeams(index, "bulls");
-        expect(first).toEqual({ id: "1|10", name: "Chicago Bulls (NBA)" });
+        expect(first).toEqual({
+            id: "espn|nba|4",
+            name: "Chicago Bulls (NBA)",
+        });
     });
 
     it("ranks prefix matches before substring, alphabetical within a tier", () => {
-        // Both Chicago teams are rank-0; tiebreak alphabetical → Bears first.
         expect(searchTeams(index, "chicago").map((m) => m.name)).toEqual([
             "Chicago Bears (NFL)",
             "Chicago Bulls (NBA)",
         ]);
     });
 
-    it("ranks a name-token match above a keyword-only substring", () => {
-        // "bulls": token prefix on Chicago Bulls (rank 1) beats the "bullseye"
-        // keyword substring on Red Star (rank 2).
+    it("ranks a name-token match above an alias-only substring", () => {
         expect(searchTeams(index, "bulls").map((m) => m.name)).toEqual([
             "Chicago Bulls (NBA)",
-            "Red Star (Test)",
+            "Red Star (MLS)",
         ]);
+    });
+
+    it("matches an abbreviation alias", () => {
+        expect(searchTeams(index, "chi")).toHaveLength(2);
     });
 
     it("caps the result count", () => {

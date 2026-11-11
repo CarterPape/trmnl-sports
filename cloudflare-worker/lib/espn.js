@@ -23,6 +23,37 @@ export function teamUrl(league, espnTeamId) {
     return `${ESPN_BASE}/${league.path}/teams/${espnTeamId}`;
 }
 
+export function teamsUrl(league) {
+    return `${ESPN_BASE}/${league.path}/teams?limit=1000`;
+}
+
+// → team-search index entries for one league; searchBlob is lowercased so `searchTeams` can substring-match it directly.
+export function parseTeamList(teamsJson, code, leagueLabel) {
+    const teams = teamsJson?.sports?.[0]?.leagues?.[0]?.teams || [];
+    return teams
+        .map(({ team }) => team)
+        .filter(
+            (team) => team?.id && team.isActive !== false && !team.isAllStar,
+        )
+        .map((team) => {
+            const name = team.displayName || "";
+            const aliases = [
+                name,
+                team.location,
+                team.name,
+                team.shortDisplayName,
+                team.abbreviation,
+            ];
+            return {
+                code,
+                espnId: String(team.id),
+                name,
+                leagueLabel,
+                searchBlob: aliases.filter(Boolean).join(" | ").toLowerCase(),
+            };
+        });
+}
+
 function defaultLogo(logos) {
     if (!Array.isArray(logos) || logos.length === 0) return null;
     const preferred = logos.find((l) => l.rel?.includes("default"));

@@ -1,12 +1,21 @@
 // Resolves the /next-game `team` param, in either form, to the provider that serves it. TRMNL appends `::label` to whatever value was picked.
 
 import { ESPN_LEAGUES } from "./leagues.js";
-import { parseTeamParam } from "./search.js";
 
 const ESPN_PREFIX = "espn";
 
 function stripLabel(raw) {
     return (raw || "").split("::")[0].trim();
+}
+
+// Legacy `TEAM_ID|LEAGUE_ID[::label]` → { teamId, leagueId: number | null }; parseInt ignores a trailing `::label` where Number() would give NaN.
+export function parseTeamParam(teamParam) {
+    const [teamId, leagueRaw] = (teamParam || "").split("|");
+    const leagueId = leagueRaw ? parseInt(leagueRaw, 10) : NaN;
+    return {
+        teamId: teamId || "",
+        leagueId: Number.isNaN(leagueId) ? null : leagueId,
+    };
 }
 
 export function espnTeamParam(code, espnId) {

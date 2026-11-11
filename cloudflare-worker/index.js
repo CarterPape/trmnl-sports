@@ -6,7 +6,7 @@
 // and tests. (Discovered standing up the 0076 integration suite.)
 import UPNG from "upng-js";
 
-import { LEAGUE_DISPLAY_NAMES, SUPPORTED_LEAGUE_IDS } from "./lib/constants.js";
+import { LEAGUE_DISPLAY_NAMES } from "./lib/constants.js";
 import {
     asOfLabel,
     notFoundMessage,
@@ -17,7 +17,7 @@ import {
 } from "./lib/localization.js";
 import { classifyNextGameCache, selectNextGame } from "./lib/schedule.js";
 import { formatEvent } from "./lib/format.js";
-import { parseTeamParam, searchTeams } from "./lib/search.js";
+import { searchTeams } from "./lib/search.js";
 import { computeBadgeStats, NO_BADGE_TRIM } from "./lib/badge.js";
 import { classifyClient, classifySource } from "./lib/client.js";
 import {
@@ -25,7 +25,9 @@ import {
     nextSeasonUrl,
     parseSchedule,
     parseTeam,
+    parseTeamList,
     scheduleUrls,
+    teamsUrl,
     teamUrl,
 } from "./lib/espn.js";
 import { ESPN_LEAGUES } from "./lib/leagues.js";
@@ -36,7 +38,11 @@ import {
     selectNextGame as selectNextEspnGame,
     upcomingEvents,
 } from "./lib/next-game.js";
-import { espnTeamParam, resolveTeamParam } from "./lib/team-param.js";
+import {
+    espnTeamParam,
+    parseTeamParam,
+    resolveTeamParam,
+} from "./lib/team-param.js";
 import LEGACY_TEAM_IDS from "./lib/legacy-team-ids.json";
 
 const API_BASE = "https://www.thesportsdb.com/api/v2/json";
@@ -163,85 +169,34 @@ async function fetchTeamMeta(teamId, env, hostname, ctx) {
     return meta;
 }
 
-// Fetch and cache the full team index across all supported leagues. SportsDB's
-// /search/team/ only matches city/team-name prefix — typing "Bulls" won't find
-// Chicago Bulls. We work around this by maintaining a local index of every
-// supported team and doing substring matching against it.
-//
-// Side benefit: per-keystroke fan-out to SportsDB disappears. After warmup,
-// each Cloudflare POP only refreshes the index ~21 times per 24h.
+// Every supported team, built from one ESPN list call per league and cached per POP, so search is a local substring scan.
 async function getTeamIndex(env, hostname, ctx, m) {
-    const key = buildCacheKey(hostname, "/_team-index", {});
+    const key = buildCacheKey(hostname, "/_team-index-espn", {});
     const cached = await caches.default.match(key);
-    // Index warm — m.cache stays "miss" (cheap recompute, no fan-out).
     if (cached) return await cached.json();
-
-    // This request pays the full ~20-call SportsDB fan-out to rebuild the index.
     m.cache = "rebuild";
 
-    const leagueIds = [...SUPPORTED_LEAGUE_IDS];
-    const results = await Promise.allSettled(
-        leagueIds.map((id) =>
-            fetch(`${API_BASE}/list/teams/${id}`, {
-                headers: { "X-API-KEY": env.SPORTSDB_API_KEY },
-            }).then((r) => (r.ok ? r.json() : null)),
+    const codes = Object.keys(ESPN_LEAGUES);
+    const lists = await Promise.all(
+        codes.map((code) =>
+            espnFetch(teamsUrl(ESPN_LEAGUES[code]), env, hostname, ctx, m),
         ),
     );
+    const index = lists.flatMap((json, i) =>
+        json ? parseTeamList(json, codes[i], ESPN_LEAGUES[codes[i]].label) : [],
+    );
 
-    const index = [];
-    let anySucceeded = false;
-    let failures = 0;
-    results.forEach((result, i) => {
-        const id = leagueIds[i];
-        // A call failed if it threw or returned non-OK (mapped to null above).
-        if (result.status !== "fulfilled" || !result.value) {
-            failures++;
-            return;
-        }
-        const teams = result.value.list || result.value.teams || [];
-        if (teams.length === 0) return;
-        anySucceeded = true;
-        const leagueLabel =
-            LEAGUE_DISPLAY_NAMES[id] || teams[0].strLeague || "";
-        for (const team of teams) {
-            const strTeam = team.strTeam || "";
-            const strTeamAlternate = team.strTeamAlternate || "";
-            const strKeywords = team.strKeywords || "";
-            index.push({
-                idTeam: team.idTeam,
-                idLeague: team.idLeague,
-                strTeam,
-                leagueLabel,
-                searchBlob:
-                    `${strTeam} | ${strTeamAlternate} | ${strKeywords}`.toLowerCase(),
-            });
-        }
-    });
+    const missing = lists.filter((json) => !json).length;
+    if (missing > 0 && missing < codes.length) m.upstream = "partial";
+    if (missing === codes.length) return [];
 
-    m.upstreamCalls = leagueIds.length;
-    m.upstreamFails = failures;
-    if (failures === 0) m.upstream = "ok";
-    else if (failures < leagueIds.length) m.upstream = "partial";
-    else m.upstream = "fail";
-
-    // If every league failed, don't poison the cache with an empty index.
-    if (!anySucceeded) return [];
-
-    const cacheResponse = new Response(JSON.stringify(index), {
-        headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": `public, max-age=${TEAM_INDEX_CACHE_TTL}`,
-        },
-    });
-    ctx.waitUntil(caches.default.put(key, cacheResponse.clone()));
+    ctx.waitUntil(
+        caches.default.put(key, cacheEntry(index, TEAM_INDEX_CACHE_TTL)),
+    );
     return index;
 }
 
-// GET /teams?q=SEARCH_TERM  (or POST with JSON body { query: "..." })
-// Returns teams matching the query, filtered to supported leagues,
-// in TRMNL xhrSelectSearch format. Matches against team name, alternate name,
-// and keywords via the cached team index (searchTeams) — no upstream call per
-// request once the index is warm.
+// GET /teams?q=SEARCH_TERM, or POST { query } from xhrSelectSearch.
 async function handleTeamsSearch(url, request, env, ctx, m) {
     let qRaw = (url.searchParams.get("q") || "").trim();
     if (!qRaw && request.method === "POST") {
@@ -259,7 +214,7 @@ async function handleTeamsSearch(url, request, env, ctx, m) {
     }
     const q = qRaw.toLowerCase();
 
-    const key = buildCacheKey(url.hostname, "/teams", { q });
+    const key = buildCacheKey(url.hostname, "/teams", { q, v: "espn" });
     const cached = await caches.default.match(key);
     // Stamp BEFORE returning the cached Response — it carries no metadata.
     if (cached) {

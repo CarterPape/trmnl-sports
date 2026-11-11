@@ -5,10 +5,13 @@ import {
     nextSeasonUrl,
     parseSchedule,
     parseTeam,
+    parseTeamList,
     scheduleUrls,
+    teamsUrl,
 } from "../lib/espn.js";
 import { ESPN_LEAGUES } from "../lib/leagues.js";
 import bama from "./fixtures/espn/cfb-bama-regular.json";
+import nbaTeams from "./fixtures/espn/nba-teams.json";
 import bayern from "./fixtures/espn/soccer-bayern-all.json";
 import yankees from "./fixtures/espn/mlb-nyy-regular.json";
 import uconnTeam from "./fixtures/espn/wbb-uconn-team.json";
@@ -102,5 +105,53 @@ describe("parseTeam", () => {
 
     it("is null without a team", () => {
         expect(parseTeam({})).toBeNull();
+    });
+});
+
+describe("teamsUrl", () => {
+    it("asks for the whole league in one page", () => {
+        expect(teamsUrl(ESPN_LEAGUES.nba)).toBe(
+            "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=1000",
+        );
+    });
+});
+
+describe("parseTeamList", () => {
+    it("builds one search entry per team, aliases folded into the blob", () => {
+        const bulls = parseTeamList(nbaTeams, "nba", "NBA").find(
+            (t) => t.espnId === "4",
+        );
+        expect(bulls).toEqual({
+            code: "nba",
+            espnId: "4",
+            name: "Chicago Bulls",
+            leagueLabel: "NBA",
+            searchBlob: "chicago bulls | chicago | bulls | bulls | chi",
+        });
+    });
+
+    it("drops inactive and all-star teams", () => {
+        const json = {
+            sports: [
+                {
+                    leagues: [
+                        {
+                            teams: [
+                                { team: { id: "1", displayName: "Kept" } },
+                                { team: { id: "2", isActive: false } },
+                                { team: { id: "3", isAllStar: true } },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        };
+        expect(parseTeamList(json, "nba", "NBA").map((t) => t.espnId)).toEqual(
+            ["1"],
+        );
+    });
+
+    it("is empty for a malformed response", () => {
+        expect(parseTeamList({}, "nba", "NBA")).toEqual([]);
     });
 });

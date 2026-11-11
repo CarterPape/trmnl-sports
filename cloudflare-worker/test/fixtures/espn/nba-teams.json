@@ -1,0 +1,114 @@
+{
+  "sports": [
+    {
+      "id": "40",
+      "leagues": [
+        {
+          "abbreviation": "NBA",
+          "id": "46",
+          "name": "National Basketball Association",
+          "season": {
+            "displayName": "2026-27",
+            "year": 2027
+          },
+          "shortName": "NBA",
+          "slug": "nba",
+          "teams": [
+            {
+              "team": {
+                "abbreviation": "CHA",
+                "alternateColor": "1d1060",
+                "color": "008ca8",
+                "displayName": "Charlotte Hornets",
+                "id": "30",
+                "isActive": true,
+                "isAllStar": false,
+                "location": "Charlotte",
+                "logos": [
+                  {
+                    "alt": "",
+                    "height": 500,
+                    "href": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ],
+                    "width": 500
+                  }
+                ],
+                "name": "Hornets",
+                "nickname": "Charlotte",
+                "shortDisplayName": "Hornets",
+                "slug": "charlotte-hornets",
+                "uid": "s:40~l:46~t:30"
+              }
+            },
+            {
+              "team": {
+                "abbreviation": "CHI",
+                "alternateColor": "000000",
+                "color": "ce1141",
+                "displayName": "Chicago Bulls",
+                "id": "4",
+                "isActive": true,
+                "isAllStar": false,
+                "location": "Chicago",
+                "logos": [
+                  {
+                    "alt": "",
+                    "height": 500,
+                    "href": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ],
+                    "width": 500
+                  }
+                ],
+                "name": "Bulls",
+                "nickname": "Chicago",
+                "shortDisplayName": "Bulls",
+                "slug": "chicago-bulls",
+                "uid": "s:40~l:46~t:4"
+              }
+            },
+            {
+              "team": {
+                "abbreviation": "GS",
+                "alternateColor": "1d428a",
+                "color": "fdb927",
+                "displayName": "Golden State Warriors",
+                "id": "9",
+                "isActive": true,
+                "isAllStar": false,
+                "location": "Golden State",
+                "logos": [
+                  {
+                    "alt": "",
+                    "height": 500,
+                    "href": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
+                    "rel": [
+                      "full",
+                      "default"
+                    ],
+                    "width": 500
+                  }
+                ],
+                "name": "Warriors",
+                "nickname": "Golden State",
+                "shortDisplayName": "Warriors",
+                "slug": "golden-state-warriors",
+                "uid": "s:40~l:46~t:9"
+              }
+            }
+          ],
+          "uid": "s:40~l:46",
+          "year": 2027
+        }
+      ],
+      "name": "Basketball",
+      "slug": "basketball",
+      "uid": "s:40"
+    }
+  ]
+}
