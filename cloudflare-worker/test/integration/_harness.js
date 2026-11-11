@@ -26,7 +26,6 @@ export function makeEnv({
 } = {}) {
     const captured = [];
     const env = {
-        SPORTSDB_API_KEY: "test",
         RATE_LIMITER: {
             limit: async () => {
                 if (rateLimitThrows) throw new Error("💥 rate limiter boom");

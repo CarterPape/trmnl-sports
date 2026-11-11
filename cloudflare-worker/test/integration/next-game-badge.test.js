@@ -17,26 +17,43 @@ import {
     waitOnExecutionContext,
 } from "./_harness.js";
 
-// idLeague 4346 (MLS) is a LEAGUE_DISPLAY_NAMES key, so the title-bar label
-// resolves from the URL alone — no fetchTeamMeta lookup — keeping the mock
-// surface to just the schedule + the two badge URLs.
-const TEAM_ID = "12345";
-const LEAGUE_ID = "4346";
+// NBA team 9101 vs 9102: ids distinct from other test files, so the shared caches.default never collides.
+const ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
+const TEAM_ID = "9101";
 const HOME_BADGE = "https://badges.test/home.png";
 const AWAY_BADGE = "https://badges.test/away.png";
 
-const EVENT = {
-    idHomeTeam: TEAM_ID,
-    idAwayTeam: "67890",
-    strHomeTeam: "Test Home FC",
-    strAwayTeam: "Test Away United",
-    strHomeTeamBadge: HOME_BADGE,
-    strAwayTeamBadge: AWAY_BADGE,
-    strTimestamp: "2099-06-01 19:00:00",
-    dateEvent: "2099-06-01",
-    strTime: "19:00:00",
-    strVenue: "Test Stadium",
-    strLeague: "American Major League Soccer",
+const competitor = (homeAway, id, badge) => ({
+    homeAway,
+    id,
+    team: {
+        id,
+        displayName: `Team ${id}`,
+        logos: [{ href: badge, rel: ["full", "default"] }],
+    },
+});
+
+const SCHEDULE = {
+    requestedSeason: { year: 2099, type: 2 },
+    events: [
+        {
+            id: "1",
+            date: "2099-06-01T19:00Z",
+            timeValid: true,
+            competitions: [
+                {
+                    status: {
+                        type: { name: "STATUS_SCHEDULED", state: "pre" },
+                    },
+                    venue: { fullName: "Test Arena" },
+                    competitors: [
+                        competitor("home", TEAM_ID, HOME_BADGE),
+                        competitor("away", "9102", AWAY_BADGE),
+                    ],
+                },
+            ],
+        },
+    ],
 };
 
 afterEach(() => {
@@ -46,11 +63,10 @@ afterEach(() => {
 describe("/next-game badge analysis", () => {
     it("decodes badge PNGs via upng and threads invert/trim into the payload", async () => {
         installFetchMock((url) => {
-            if (url.includes(`/schedule/full/team/${TEAM_ID}`)) {
-                return new Response(JSON.stringify({ schedule: [EVENT] }), {
-                    headers: { "Content-Type": "application/json" },
-                });
-            }
+            if (url === `${ESPN}/teams/${TEAM_ID}/schedule?seasontype=2`)
+                return Response.json(SCHEDULE);
+            if (url === `${ESPN}/teams/${TEAM_ID}/schedule?seasontype=3`)
+                return Response.json({ events: [] });
             if (url === HOME_BADGE) return new Response(makeBadgePng()); // opaque white
             if (url === AWAY_BADGE) {
                 return new Response(makeBadgePng({ r: 0, g: 0, b: 0 })); // opaque black
@@ -63,7 +79,7 @@ describe("/next-game badge analysis", () => {
 
         const response = await worker.fetch(
             new Request(
-                `https://worker.test/next-game?team=${TEAM_ID}|${LEAGUE_ID}&type=any&locale=en-US&tz=UTC`,
+                `https://worker.test/next-game?team=espn|nba|${TEAM_ID}&type=any&locale=en-US&tz=UTC`,
             ),
             env,
             ctx,
@@ -74,8 +90,8 @@ describe("/next-game badge analysis", () => {
         const body = await response.json();
 
         expect(body.found).toBe(true);
-        expect(body.team_name).toBe("Test Home FC");
-        expect(body.team_league_label).toBe("MLS");
+        expect(body.team_name).toBe("Team 9101");
+        expect(body.team_league_label).toBe("NBA");
 
         // The real decode ran and distinguished the two badges: white → invert,
         // black → not. Trim is the opaque-content box; a solid badge fills the
@@ -85,7 +101,7 @@ describe("/next-game badge analysis", () => {
         expect(body.home_team_badge_trim).toEqual({ x: 0, y: 0, w: 1, h: 1 });
 
         // Pre-localized labels were produced server-side.
-        expect(body.start_utc_timestamp).toBe("2099-06-01 19:00:00+00:00");
+        expect(body.start_utc_timestamp).toBe("2099-06-01T19:00:00.000Z");
         expect(body.date_label).toBeTruthy();
         expect(body.time_label).toBeTruthy();
 
@@ -96,7 +112,7 @@ describe("/next-game badge analysis", () => {
         expect(dp.outcome).toBe("ok");
         expect(dp.cache).toBe("miss");
         expect(dp.upstream).toBe("ok");
-        expect(dp.upstreamCalls).toBe(1);
-        expect(dp.team).toBe(TEAM_ID);
+        expect(dp.upstreamCalls).toBe(2);
+        expect(dp.team).toBe(`espn|nba|${TEAM_ID}`);
     });
 });

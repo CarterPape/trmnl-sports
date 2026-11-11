@@ -6,7 +6,6 @@
 // and tests. (Discovered standing up the 0076 integration suite.)
 import UPNG from "upng-js";
 
-import { LEAGUE_DISPLAY_NAMES } from "./lib/constants.js";
 import {
     asOfLabel,
     notFoundMessage,
@@ -15,8 +14,6 @@ import {
     parseTimeZone,
     unavailableMessage,
 } from "./lib/localization.js";
-import { classifyNextGameCache, selectNextGame } from "./lib/schedule.js";
-import { formatEvent } from "./lib/format.js";
 import { searchTeams, searchTier } from "./lib/search.js";
 import { computeBadgeStats, NO_BADGE_TRIM } from "./lib/badge.js";
 import { classifyClient, classifySource } from "./lib/client.js";
@@ -39,37 +36,22 @@ import {
     formatNextGame,
     formatNoGame,
     scheduleTtlSeconds,
-    selectNextGame as selectNextEspnGame,
+    selectNextGame,
     upcomingEvents,
 } from "./lib/next-game.js";
-import {
-    espnTeamParam,
-    parseTeamParam,
-    resolveTeamParam,
-} from "./lib/team-param.js";
+import { espnTeamParam, resolveTeamParam } from "./lib/team-param.js";
 import LEGACY_TEAM_IDS from "./lib/legacy-team-ids.json";
-
-const API_BASE = "https://www.thesportsdb.com/api/v2/json";
 
 const TEAMS_CACHE_TTL = 86400; // 24h — per-query search response cache
 const TEAM_INDEX_CACHE_TTL = 86400; // 24h — full team list across supported leagues
 const NEXT_GAME_CACHE_TTL = 600; // 10 min — under TRMNL's 15-min poll interval
-// How long the durable /next-game entry survives so it can be served as
-// last-known-good during an upstream outage. The *outgoing* freshness is still
-// NEXT_GAME_CACHE_TTL — the worker reads X-Fetched-At to decide fresh vs. stale,
-// independent of this much-longer storage TTL.
-const LKG_CACHE_TTL = 7 * 86400; // 7 days
+const LKG_CACHE_TTL = 7 * 86400; // durable schedule entry, re-served as last-known-good during an outage
 
 // Cache the per-badge analysis (invert decision + content bounding box) per
 // badge URL for a long time — team logos rarely change. Looked up via
 // caches.default; recomputed on cache miss.
 const BADGE_ANALYSIS_CACHE_TTL = 30 * 86400; // 30 days
 
-// Cache the team metadata lookup separately from the not-found response so
-// that many not-found responses share a single team lookup.
-const TEAM_META_CACHE_TTL = 30 * 86400; // 30 days
-
-const ESPN_ROUTED_CODES = new Set(Object.keys(ESPN_LEAGUES));
 const ESPN_TEAM_CACHE_TTL = 30 * 86400;
 const ESPN_FAILURE_BACKOFF_TTL = 5 * 60;
 const ESPN_COOLDOWN_TTL = 15 * 60;
@@ -127,50 +109,6 @@ async function analyzeBadge(url, hostname, ctx) {
     });
     ctx.waitUntil(caches.default.put(key, cacheResponse.clone()));
     return result;
-}
-
-// Look up a team's badge, name, and league by team ID. Used to populate the
-// not-found response (so the layout can still show the configured team's
-// logo and name) and to fall back when the URL doesn't supply a league ID.
-// Cached per team ID for 30 days; team metadata changes rarely.
-async function fetchTeamMeta(teamId, env, hostname, ctx) {
-    const empty = { badge: null, name: null, idLeague: null, strLeague: null };
-    if (!teamId) return empty;
-
-    const key = buildCacheKey(hostname, "/_team-meta", { teamId });
-    const cached = await caches.default.match(key);
-    if (cached) return await cached.json();
-
-    let meta = empty;
-    try {
-        const res = await fetch(`${API_BASE}/lookup/team/${teamId}`, {
-            headers: { "X-API-KEY": env.SPORTSDB_API_KEY },
-        });
-        if (res.ok) {
-            const data = await res.json();
-            const team = data.lookup?.[0] || data.teams?.[0];
-            if (team) {
-                meta = {
-                    badge: team.strBadge || null,
-                    name: team.strTeam || null,
-                    idLeague: team.idLeague ? Number(team.idLeague) : null,
-                    strLeague: team.strLeague || null,
-                };
-            }
-        }
-    } catch {
-        // Lookup failed — fall through with the empty meta.
-    }
-
-    // Cache the result either way so failures don't refetch repeatedly.
-    const cacheResponse = new Response(JSON.stringify(meta), {
-        headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": `public, max-age=${TEAM_META_CACHE_TTL}`,
-        },
-    });
-    ctx.waitUntil(caches.default.put(key, cacheResponse.clone()));
-    return meta;
 }
 
 // Every supported team, built from one ESPN list call per league and cached per POP, so search is a local substring scan.
@@ -254,45 +192,6 @@ async function handleTeamsSearch(url, request, env, ctx, m) {
     });
     ctx.waitUntil(caches.default.put(key, response.clone()));
     return response;
-}
-
-// Persist a /next-game payload as the durable last-known-good entry. Stored with
-// a long TTL so it survives well past the 10-min freshness window, plus an
-// X-Fetched-At stamp the handler reads to compute fresh-vs-stale itself. Kept
-// separate from the short-TTL response returned to the client.
-function writeDurable(key, payload, ctx) {
-    const resp = new Response(JSON.stringify(payload), {
-        headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": `public, max-age=${LKG_CACHE_TTL}`,
-            "X-Fetched-At": String(Date.now()),
-        },
-    });
-    ctx.waitUntil(caches.default.put(key, resp.clone()));
-}
-
-// Recover the configured team's badge/name/league for an outage screen when we
-// have no last-known-good payload to reuse. Leans on the 30-day team-meta and
-// badge-analysis caches, so a previously-seen team stays branded even while
-// upstream is down; a never-seen team degrades to just the message. Mirrors the
-// not-found payload's team fields so the templates render identically.
-async function outageTeamMeta(teamId, leagueIdFromUrl, env, hostname, ctx) {
-    const meta = await fetchTeamMeta(teamId, env, hostname, ctx);
-    const teamLeagueLabel =
-        LEAGUE_DISPLAY_NAMES[leagueIdFromUrl] ||
-        LEAGUE_DISPLAY_NAMES[meta.idLeague] ||
-        meta.strLeague ||
-        "";
-    const { invert, trim } = meta.badge
-        ? await analyzeBadge(meta.badge, hostname, ctx)
-        : { invert: false, trim: NO_BADGE_TRIM };
-    return {
-        team_badge: meta.badge,
-        team_badge_invert: invert,
-        team_badge_trim: trim,
-        team_name: meta.name || "",
-        team_league_label: teamLeagueLabel,
-    };
 }
 
 // ── ESPN ──────────────────────────────────────────────────────────────────
@@ -479,7 +378,7 @@ async function handleEspnNextGame(ref, { type, locale, tz }, url, env, ctx, m) {
         });
     }
 
-    const event = selectNextEspnGame(schedule.events, type, ref.espnId, tz);
+    const event = selectNextGame(schedule.events, type, ref.espnId, tz);
     let payload;
     if (event) {
         const [home, away] = await Promise.all([
@@ -523,201 +422,31 @@ async function handleEspnNextGame(ref, { type, locale, tz }, url, env, ctx, m) {
     return jsonResponse(payload, { maxAge: NEXT_GAME_CACHE_TTL });
 }
 
-// GET /next-game?team=TEAM_ID|LEAGUE_ID&type=any|home|away
-// Returns the next matching game for the given team, or { found: false }.
-//
-// All three filters use /schedule/full/team/{id}, which returns the team's
-// full current-season schedule (~250-event cap) across every competition
-// they're entered in — including cup and continental fixtures. The pure
-// selectNextGame (lib/schedule.js) does the upcoming-filter + sort + home/away
-// pick locally, so cross-league matches stay visible regardless of filter, and
-// we can find the next home/away match anywhere in the season rather than just
-// within the next handful of events.
+// GET /next-game?team=espn|CODE|ESPN_ID (or a legacy TEAM_ID|LEAGUE_ID)&type=any|home|away
 async function handleNextGame(url, env, ctx, m) {
     const teamParam = url.searchParams.get("team") || "";
     const type = url.searchParams.get("type") || "any";
     const locale = parseLocale(url.searchParams.get("locale"));
     const tz = parseTimeZone(url.searchParams.get("tz"));
-    // TRMNL's per-device friendly_id (e.g. "93B2E9"), our unique-install proxy.
-    // Same {{...}} guard as locale/tz: local trmnlp can't interpolate trmnl.*
-    // into the polling URL, so it arrives as the literal placeholder → treat as
-    // absent. Empty/placeholder ⇒ not a real device poll.
+    // Local trmnlp sends the literal {{...}} placeholder, so that isn't a real device.
     const deviceRaw = url.searchParams.get("device") || "";
-    const device = deviceRaw.includes("{{") ? "" : deviceRaw;
-
-    const ref = resolveTeamParam(teamParam, LEGACY_TEAM_IDS, ESPN_ROUTED_CODES);
-    if (ref?.provider === "espn") {
-        m.type = type;
-        m.tz = tz;
-        m.locale = locale;
-        m.device = device;
-        m.provider = "espn";
-        m.idform = ref.idform;
-        m.team = ref.legacyTeamId || espnTeamParam(ref.code, ref.espnId);
-        return handleEspnNextGame(ref, { type, locale, tz }, url, env, ctx, m);
-    }
-    m.provider = "sportsdb";
-    m.idform = "legacy";
-
-    // The leagueId half drives the league display label in the title bar so it
-    // stays consistent with the dropdown (and with the team's home league, not
-    // the league of the next match — cup fixtures shouldn't change the label).
-    // parseTeamParam strips TRMNL's ::label suffix off the league half so real
-    // device polls hit the URL-leagueId fast path (no fetchTeamMeta) — see 0081.
-    const { teamId, leagueId: leagueIdFromUrl } = parseTeamParam(teamParam);
-
-    // Stamp config dimensions from parsed/validated values (so {{...}}
-    // placeholders and junk don't inflate cardinality). team/league IDs are
-    // public, not PII.
-    m.team = teamId || "";
     m.type = type;
     m.tz = tz;
     m.locale = locale;
-    m.device = device;
+    m.device = deviceRaw.includes("{{") ? "" : deviceRaw;
 
-    if (!teamId) {
+    const ref = resolveTeamParam(teamParam, LEGACY_TEAM_IDS);
+    if (!ref) {
         m.outcome = "missing_team";
         return jsonResponse({
             found: false,
             not_found_message: notFoundMessage(locale),
         });
     }
-
-    const key = buildCacheKey(url.hostname, "/next-game", {
-        team: teamParam,
-        type,
-        locale,
-        tz,
-    });
-    // One durable cache entry per (team,type,locale,tz): stored with a long TTL
-    // plus an X-Fetched-At stamp, but the worker computes its own freshness via
-    // classifyNextGameCache. Fresh (< NEXT_GAME_CACHE_TTL old) → serve as a hit.
-    // Stale but still serveable → keep it as last-known-good and try to refresh;
-    // if upstream then fails we serve the stale copy rather than a misleading
-    // empty "no game" screen.
-    const cached = await caches.default.match(key);
-    let lkg = null;
-    let fetchedAt = 0;
-    if (cached) {
-        fetchedAt = Number(cached.headers.get("X-Fetched-At")) || 0;
-        try {
-            lkg = await cached.json();
-        } catch {
-            lkg = null; // Unexpected cache shape — treat as a miss, refetch.
-        }
-    }
-    const { fresh, serveable } = classifyNextGameCache({
-        lkg,
-        fetchedAtMs: fetchedAt,
-        freshnessMs: NEXT_GAME_CACHE_TTL * 1000,
-    });
-    if (fresh) {
-        m.cache = "hit";
-        // Re-wrap so TRMNL sees the short poll-cadence TTL, not the long
-        // durable TTL the stored entry carries.
-        return jsonResponse(lkg, { maxAge: NEXT_GAME_CACHE_TTL });
-    }
-    m.cache = "miss";
-
-    const res = await fetch(`${API_BASE}/schedule/full/team/${teamId}`, {
-        headers: { "X-API-KEY": env.SPORTSDB_API_KEY },
-    });
-    m.upstreamCalls = 1;
-    m.upstream = res.ok ? "ok" : "fail";
-    if (!res.ok) {
-        m.upstreamFails = 1;
-        // Upstream is down. Serve last-known-good if it's still worth showing.
-        // `serveable` is THE GUARD: a season-over (found:false) entry always
-        // re-shows, but a game entry is only re-served until its start passes —
-        // a 7-day durable entry routinely outlives the game it describes, and a
-        // confidently-wrong "next game" is worse than an honest outage message.
-        if (serveable) {
-            m.cache = "stale";
-            m.outcome = "stale";
-            return jsonResponse(
-                {
-                    ...lkg,
-                    stale: true,
-                    as_of_label: asOfLabel(fetchedAt, locale, tz),
-                },
-                { maxAge: 0 },
-            );
-        }
-        // Nothing usable to fall back on — say so honestly, but recover the
-        // team's badge/name (from the 30-day team-meta cache) so the screen
-        // stays branded. maxAge 0 so the next poll re-attempts upstream promptly.
-        m.outcome = "upstream_fail";
-        const meta = await outageTeamMeta(
-            teamId,
-            leagueIdFromUrl,
-            env,
-            url.hostname,
-            ctx,
-        );
-        return jsonResponse(
-            {
-                found: false,
-                outage: true,
-                ...meta,
-                not_found_message: outageMessage(locale),
-            },
-            { maxAge: 0 },
-        );
-    }
-
-    const data = await res.json();
-    const event = selectNextGame(data.schedule, type, teamId, tz);
-
-    // Resolve the team's home-league display label. Prefer the URL's leagueId
-    // (which TRMNL stores when the user picks the team from the dropdown). Fall
-    // back to a one-time team-meta lookup for legacy settings without it.
-    let teamLeagueLabel = LEAGUE_DISPLAY_NAMES[leagueIdFromUrl] || "";
-    let teamMeta = null;
-    if (!teamLeagueLabel || !event) {
-        teamMeta = await fetchTeamMeta(teamId, env, url.hostname, ctx);
-        if (!teamLeagueLabel) {
-            teamLeagueLabel =
-                LEAGUE_DISPLAY_NAMES[teamMeta.idLeague] ||
-                teamMeta.strLeague ||
-                "";
-        }
-    }
-
-    let payload;
-    if (event) {
-        const [home, away] = await Promise.all([
-            analyzeBadge(event.strHomeTeamBadge, url.hostname, ctx),
-            analyzeBadge(event.strAwayTeamBadge, url.hostname, ctx),
-        ]);
-        payload = formatEvent(event, {
-            homeInvert: home.invert,
-            awayInvert: away.invert,
-            homeTrim: home.trim,
-            awayTrim: away.trim,
-            locale,
-            tz,
-            teamId,
-            teamLeagueLabel,
-        });
-    } else {
-        const { invert, trim } = teamMeta.badge
-            ? await analyzeBadge(teamMeta.badge, url.hostname, ctx)
-            : { invert: false, trim: NO_BADGE_TRIM };
-        payload = {
-            found: false,
-            team_badge: teamMeta.badge,
-            team_badge_invert: invert,
-            team_badge_trim: trim,
-            team_name: teamMeta.name || "",
-            team_league_label: teamLeagueLabel,
-            not_found_message: notFoundMessage(locale),
-        };
-    }
-
-    // Persist as the durable last-known-good entry (long TTL + X-Fetched-At),
-    // but return a short-TTL response so TRMNL re-polls on its normal cadence.
-    writeDurable(key, payload, ctx);
-    return jsonResponse(payload, { maxAge: NEXT_GAME_CACHE_TTL });
+    m.provider = "espn";
+    m.idform = ref.idform;
+    m.team = ref.legacyTeamId || espnTeamParam(ref.code, ref.espnId);
+    return handleEspnNextGame(ref, { type, locale, tz }, url, env, ctx, m);
 }
 
 // ── Observability ─────────────────────────────────────────────────────────
@@ -754,7 +483,7 @@ function newMetrics(endpoint, method) {
         tz: "",
         locale: "",
         device: "", // trmnl.device.friendly_id; populated only by real TRMNL device polls
-        provider: "", // espn | sportsdb (next-game only)
+        provider: "", // espn (next-game only)
         idform: "", // espn | legacy: which team-param form the install stores
     };
 }

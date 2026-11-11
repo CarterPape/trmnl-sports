@@ -1,7 +1,7 @@
 {
     "name": "trmnl-sports-worker",
     "version": "1.0.0",
-    "description": "Cloudflare Worker backend for the TRMNL Sports plugin. Proxies TheSportsDB v2 API for team search and next-game lookups.",
+    "description": "Cloudflare Worker backend for the TRMNL Sports plugin. Proxies ESPN's site API for team search and next-game lookups.",
     "main": "index.js",
     "scripts": {
         "deploy": "wrangler deploy",
@@ -12,7 +12,7 @@
     "keywords": [
         "trmnl",
         "cloudflare-workers",
-        "thesportsdb",
+        "espn",
         "sports"
     ],
     "author": "Carter Pape",

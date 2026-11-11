@@ -295,18 +295,16 @@ describe("/next-game on ESPN", () => {
         expect(decodeDatapoint(captured[1]).upstream).toBe("cooldown");
     });
 
-    it("leaves a legacy id from a league ESPN doesn't carry on TheSportsDB", async () => {
-        espnRoutes((url) => {
-            if (url.includes("thesportsdb.com"))
-                return json({ schedule: [], lookup: [] });
-            return undefined;
-        });
+    it("answers an unmapped legacy id with no game and no upstream call", async () => {
+        const calls = espnRoutes(() => undefined);
         const { env, captured } = makeEnv();
 
-        await poll("135253|4405", env);
+        const { body } = await poll("135253|4405", env);
+        expect(body).toMatchObject({ found: false });
+        expect(calls).toHaveLength(0);
         expect(decodeDatapoint(captured[0])).toMatchObject({
-            provider: "sportsdb",
-            idform: "legacy",
+            outcome: "missing_team",
+            upstreamCalls: 0,
         });
     });
 });
