@@ -22,16 +22,16 @@ This file is the canonical record of the **AE column contract** plus the canonic
 | `blob8` | tz | parsed IANA time zone |
 | `blob9` | locale | parsed locale |
 | `blob10` | client | **descriptive** UA bucket: `faraday` / `ruby` / `curl` / `browser` / `other`. ⚠️ NOT provenance — TRMNL polls with both `ruby` (device-checkin, the bulk of real traffic) and `faraday` (preview/`team=0`), and our local tooling shares those UAs. Do not infer test/real from this. |
-| `blob11` | source | `test` / `prod` — `test` **only** when `?test=1` is present (our tools/manual hits set it); everything else is `prod`. (Earlier this also auto-tagged the `ruby`/`curl` buckets as test, which hid real TRMNL device traffic — removed.) |
+| `blob11` | source | `test` / `prod` — `test` **only** when `?test=1` is present (our tools/manual hits set it); everything else is `prod`. |
 | `blob12` | device | `trmnl.device.friendly_id` (e.g. `93B2E9`), `next-game` only. **Populated only by real TRMNL device polls** — local `trmnlp` sends the literal `{{...}}` placeholder (not interpolated) and curl sends nothing, both stored as `''`. This is the reliable real-install signal. |
-| `blob13` | provider | `next-game` only: `espn` / `sportsdb`, whichever served the schedule |
+| `blob13` | provider | `next-game` only: always `espn` (rows before 2026-11-10's cutover may say `sportsdb`) |
 | `blob14` | idform | `next-game` only: `espn` (install stores `espn\|code\|id`) / `legacy` (stores a TheSportsDB id) |
 | `double1` | latencyMs | wall-clock request duration |
 | `double2` | status | HTTP status code |
-| `double3` | upstreamCalls | upstream calls issued: SportsDB (0, 1, or ~20 on a teams rebuild) or ESPN (0–3 per schedule refresh, +1 for a team record) |
+| `double3` | upstreamCalls | ESPN calls issued: 0–3 per schedule refresh, +1 for a team record, ~18 on a team-index rebuild (16 leagues + 2 division standings) |
 | `double4` | upstreamFails | how many of those calls failed |
 
-Extension point: new dimensions append at `blob15+` / `double5+` (e.g. sub-fetch volume from `fetchTeamMeta`/`shouldInvertBadge`, deliberately not tracked in v1).
+Extension point: new dimensions append at `blob15+` / `double5+` (e.g. badge-fetch volume from `analyzeBadge`, deliberately not tracked in v1).
 
 **Reading real (non-test) traffic — use `device`, not `client`/`source`.** The UA buckets cannot separate real TRMNL polls from our own tooling (both use `ruby`/`faraday`), so the gold-standard real-install filter on `next-game` is **`AND blob12 != ''`** (a populated friendly_id ⇒ a real device poll; excludes our local trmnlp/curl, which lack one). `AND blob11 = 'prod'` additionally drops anything explicitly `?test=1`-marked, but on its own it now *includes* our un-tagged local tooling — so prefer the `device` filter, or combine both. The Workers Logs line carries the raw `ua` + `device` so buckets can be refined later without redeploying.
 
@@ -51,7 +51,7 @@ Always weight counts by `_sample_interval` (it is `1` until AE down-samples at h
 
 ### Cache-hit ratio, per endpoint (last 24h)
 
-The headline number for roadmap item B. `next-game`'s ratio shows how often a poll re-fetches SportsDB. `stale` serves are deliberately excluded from both the numerator and the denominator — they're an outage signal, not a cache outcome; watch them via the degradation query below.
+The headline number for roadmap item B. `next-game`'s ratio shows how often a poll re-fetches ESPN. `stale` serves are deliberately excluded from both the numerator and the denominator — they're an outage signal, not a cache outcome; watch them via the degradation query below.
 
 ```sql
 SELECT
@@ -65,9 +65,9 @@ WHERE timestamp > NOW() - INTERVAL '1' DAY AND blob3 != 'none'
 GROUP BY endpoint
 ```
 
-### Upstream SportsDB error rate, per endpoint (last 24h)
+### Upstream ESPN error rate, per endpoint (last 24h)
 
-Uses the call-count doubles so the 20-call teams rebuild is weighted correctly.
+Uses the call-count doubles so the ~18-call teams rebuild is weighted correctly.
 
 ```sql
 SELECT
@@ -131,7 +131,7 @@ GROUP BY endpoint
 
 ### Team-index rebuild frequency (teams, last 7 days)
 
-Confirms the "~21 rebuilds/day/POP" assumption and surfaces SportsDB-outage bursts (repeated `rebuild` + `upstream=fail`).
+Confirms the "~21 rebuilds/day/POP" assumption and surfaces ESPN-outage bursts (repeated `rebuild` + `upstream=fail`).
 
 ```sql
 SELECT
