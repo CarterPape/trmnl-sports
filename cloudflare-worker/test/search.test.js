@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { matchRank, searchTeams } from "../lib/search.js";
+import { matchRank, searchTeams, searchTier, TIER } from "../lib/search.js";
 
 describe("matchRank", () => {
     const bulls = { name: "Chicago Bulls" };
@@ -75,5 +75,133 @@ describe("searchTeams", () => {
 
     it("returns nothing when no blob contains the query", () => {
         expect(searchTeams(index, "zzz")).toEqual([]);
+    });
+});
+
+describe("searchTier", () => {
+    const divisions = { fbs: new Set(["41"]), fcs: new Set(["2277"]) };
+    const tierOf = (code, espnId) => searchTier({ code, espnId }, divisions);
+
+    it("puts every pro league in the top tier", () => {
+        expect(tierOf("nba", "4")).toBe(TIER.pro);
+        expect(tierOf("nwsl", "41")).toBe(TIER.pro);
+    });
+
+    it("ranks an FBS school's rows in every sport as FBS", () => {
+        expect(tierOf("cfb", "41")).toBe(TIER.fbs);
+        expect(tierOf("wbb", "41")).toBe(TIER.fbs);
+    });
+
+    it("treats FCS football and non-FBS basketball as other D-I", () => {
+        expect(tierOf("cfb", "2277")).toBe(TIER.otherDivisionI);
+        expect(tierOf("mbb", "2250")).toBe(TIER.otherDivisionI);
+    });
+
+    it("sinks football outside FBS and FCS to the bottom", () => {
+        expect(tierOf("cfb", "2071")).toBe(TIER.lowerDivision);
+    });
+});
+
+describe("searchTeams tiers", () => {
+    const team = (code, espnId, name, leagueLabel, tier) => ({
+        code,
+        espnId,
+        name,
+        leagueLabel,
+        tier,
+        searchBlob: name.toLowerCase(),
+    });
+    const index = [
+        team("cfb", "2084", "Buffalo Bulls", "NCAA Football", TIER.fbs),
+        team("mbb", "2084", "Buffalo Bulls", "NCAA Men's Basketball", TIER.fbs),
+        team("cfb", "58", "South Florida Bulls", "NCAA Football", TIER.fbs),
+        team(
+            "cfb",
+            "2304",
+            "Johnson C. Smith Golden Bulls",
+            "NCAA Football",
+            TIER.lowerDivision,
+        ),
+        team("nba", "4", "Chicago Bulls", "NBA", TIER.pro),
+        team(
+            "cfb",
+            "2071",
+            "Bloomsburg Huskies",
+            "NCAA Football",
+            TIER.lowerDivision,
+        ),
+        team(
+            "cfb",
+            "2277",
+            "Houston Christian Huskies",
+            "NCAA Football",
+            TIER.otherDivisionI,
+        ),
+        team(
+            "cfb",
+            "2392",
+            "Michigan Tech Huskies",
+            "NCAA Football",
+            TIER.lowerDivision,
+        ),
+        team("cfb", "264", "Washington Huskies", "NCAA Football", TIER.fbs),
+        team("cfb", "41", "UConn Huskies", "NCAA Football", TIER.fbs),
+        team(
+            "cfb",
+            "2459",
+            "Northern Illinois Huskies",
+            "NCAA Football",
+            TIER.fbs,
+        ),
+        team("nba", "99", "Bloomington Ballers", "NBA", TIER.pro),
+    ];
+    const names = (q) => searchTeams(index, q).map((m) => m.name);
+
+    it("puts the pro team ahead of same-mascot colleges", () => {
+        expect(names("bulls")).toEqual([
+            "Chicago Bulls (NBA)",
+            "Buffalo Bulls (NCAA Football)",
+            "Buffalo Bulls (NCAA Men's Basketball)",
+            "South Florida Bulls (NCAA Football)",
+            "Johnson C. Smith Golden Bulls (NCAA Football)",
+        ]);
+    });
+
+    it("orders FBS, then other D-I, then lower divisions", () => {
+        expect(names("huskies")).toEqual([
+            "Northern Illinois Huskies (NCAA Football)",
+            "UConn Huskies (NCAA Football)",
+            "Washington Huskies (NCAA Football)",
+            "Houston Christian Huskies (NCAA Football)",
+            "Bloomsburg Huskies (NCAA Football)",
+            "Michigan Tech Huskies (NCAA Football)",
+        ]);
+    });
+
+    it("breaks ties within a match rank by tier", () => {
+        expect(names("bloom")).toEqual([
+            "Bloomington Ballers (NBA)",
+            "Bloomsburg Huskies (NCAA Football)",
+        ]);
+    });
+
+    it("keeps match quality ahead of tier", () => {
+        const ranked = searchTeams(
+            [
+                team("nba", "4", "Chicago Bulls", "NBA", TIER.pro),
+                team(
+                    "cfb",
+                    "3",
+                    "Bulls Tech Rams",
+                    "NCAA Football",
+                    TIER.lowerDivision,
+                ),
+            ],
+            "bulls",
+        );
+        expect(ranked.map((m) => m.name)).toEqual([
+            "Bulls Tech Rams (NCAA Football)",
+            "Chicago Bulls (NBA)",
+        ]);
     });
 });

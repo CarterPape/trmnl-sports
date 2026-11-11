@@ -27,6 +27,20 @@ export function teamsUrl(league) {
     return `${ESPN_BASE}/${league.path}/teams?limit=1000`;
 }
 
+export const FBS_GROUP = 80;
+export const FCS_GROUP = 81;
+
+// The site API's team lists carry no division, so CFB's FBS/FCS membership comes from the division standings.
+export function divisionStandingsUrl(group) {
+    return `https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=${group}`;
+}
+
+// Scans the raw text instead of parsing it: a standings body is ~2.5 MB of per-team stats, and only the ids matter.
+export function parseStandingsTeamIds(standingsText) {
+    const ids = String(standingsText ?? "").matchAll(/"team":\{"id":"(\d+)"/g);
+    return new Set([...ids].map(([, id]) => id));
+}
+
 // → team-search index entries for one league; searchBlob is lowercased so `searchTeams` can substring-match it directly.
 export function parseTeamList(teamsJson, code, leagueLabel) {
     const teams = teamsJson?.sports?.[0]?.leagues?.[0]?.teams || [];

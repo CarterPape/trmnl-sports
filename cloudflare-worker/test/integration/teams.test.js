@@ -17,8 +17,19 @@ const json = (body, status = 200) =>
         status,
         headers: { "Content-Type": "application/json" },
     });
-const emptyLeague = { sports: [{ leagues: [{ teams: [] }] }] };
-const INDEX_KEY = "https://worker.test/_cache/_team-index-espn?";
+const STANDINGS = "https://site.api.espn.com/apis/v2/sports/football/college-football/standings";
+const CFB_TEAMS = `${ESPN}/football/college-football/teams?limit=1000`;
+const division = (group) => `${STANDINGS}?group=${group}`;
+const league = (teams) => ({
+    sports: [{ leagues: [{ teams }] }],
+});
+const emptyLeague = league([]);
+const roster = (...ids) => ({
+    children: [
+        { standings: { entries: ids.map((id) => ({ team: { id }, stats: [] })) } },
+    ],
+});
+const INDEX_KEY = "https://worker.test/_cache/_team-index-espn-v2?";
 
 async function search(query, env) {
     const ctx = createExecutionContext();
@@ -40,16 +51,18 @@ afterEach(async () => {
     await caches.default.delete(INDEX_KEY);
     for (const q of ["bulls", "warriors", "hornets"]) {
         await caches.default.delete(
-            `https://worker.test/_cache/teams?q=${q}&v=espn`,
+            `https://worker.test/_cache/teams?q=${q}&v=espn-tiers`,
         );
     }
 });
 
 describe("/teams on ESPN", () => {
     it("builds the index from every league and hands out espn| ids", async () => {
-        const calls = installFetchMock((url) =>
-            url === NBA_TEAMS ? json(nbaTeams) : json(emptyLeague),
-        );
+        const calls = installFetchMock((url) => {
+            if (url === NBA_TEAMS) return json(nbaTeams);
+            if (url.startsWith(STANDINGS)) return json(roster("1"));
+            return json(emptyLeague);
+        });
         const { env, captured } = makeEnv();
 
         const { status, body } = await search("Bulls", env);
@@ -58,18 +71,69 @@ describe("/teams on ESPN", () => {
         expect(body).toEqual([
             { id: "espn|nba|4", name: "Chicago Bulls (NBA)" },
         ]);
-        expect(calls).toHaveLength(16);
-        expect(calls.every((u) => u.startsWith(ESPN))).toBe(true);
+        expect(calls).toHaveLength(18);
+        expect(calls.filter((u) => u.startsWith(STANDINGS)).sort()).toEqual([
+            division(80),
+            division(81),
+        ]);
         const dp = decodeDatapoint(captured[0]);
         expect(dp.cache).toBe("rebuild");
         expect(dp.upstream).toBe("ok");
-        expect(dp.upstreamCalls).toBe(16);
+        expect(dp.upstreamCalls).toBe(18);
+    });
+
+    it("ranks the pro team, then FBS, then FCS, then lower divisions", async () => {
+        const cfb = league(
+            [
+                ["2084", "Buffalo Bulls", "Buffalo", "Bulls"],
+                ["2304", "Johnson C. Smith Golden Bulls", "Johnson C. Smith", "Golden Bulls"],
+                ["2277", "Houston Bulls", "Houston", "Bulls"],
+            ].map(([id, displayName, location, name]) => ({
+                team: { id, displayName, location, name },
+            })),
+        );
+        installFetchMock((url) => {
+            if (url === NBA_TEAMS) return json(nbaTeams);
+            if (url === CFB_TEAMS) return json(cfb);
+            if (url === division(80)) return json(roster("2084"));
+            if (url === division(81)) return json(roster("2277"));
+            return json(emptyLeague);
+        });
+
+        const { body } = await search("bulls", makeEnv().env);
+
+        expect(body.map((m) => m.id)).toEqual([
+            "espn|nba|4",
+            "espn|cfb|2084",
+            "espn|cfb|2277",
+            "espn|cfb|2304",
+        ]);
+    });
+
+    it("still answers, pro first, when the division rosters fail", async () => {
+        const cfb = league([
+            { team: { id: "2084", displayName: "Buffalo Bulls" } },
+        ]);
+        installFetchMock((url) => {
+            if (url === NBA_TEAMS) return json(nbaTeams);
+            if (url === CFB_TEAMS) return json(cfb);
+            if (url.startsWith(STANDINGS)) return json({}, 500);
+            return json(emptyLeague);
+        });
+        const { env, captured } = makeEnv();
+
+        const { body } = await search("bulls", env);
+
+        expect(body.map((m) => m.id)).toEqual(["espn|nba|4", "espn|cfb|2084"]);
+        expect(decodeDatapoint(captured[0]).upstream).toBe("partial");
     });
 
     it("serves later queries from the cached index without upstream calls", async () => {
-        installFetchMock((url) =>
-            url === NBA_TEAMS ? json(nbaTeams) : json(emptyLeague),
-        );
+        installFetchMock((url) => {
+            if (url === NBA_TEAMS) return json(nbaTeams);
+            if (url.startsWith(STANDINGS)) return json(roster("1"));
+            return json(emptyLeague);
+        });
         await search("Bulls", makeEnv().env);
 
         const calls = installFetchMock(() => undefined);
@@ -96,7 +160,7 @@ describe("/teams on ESPN", () => {
         ]);
         const dp = decodeDatapoint(captured[0]);
         expect(dp.upstream).toBe("partial");
-        expect(dp.upstreamFails).toBe(15);
+        expect(dp.upstreamFails).toBe(17);
     });
 
     it("returns nothing and caches no index when every league fails", async () => {

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    divisionStandingsUrl,
+    FBS_GROUP,
     mergeSchedules,
     nextSeasonUrl,
     parseSchedule,
+    parseStandingsTeamIds,
     parseTeam,
     parseTeamList,
     scheduleUrls,
@@ -146,12 +149,47 @@ describe("parseTeamList", () => {
                 },
             ],
         };
-        expect(parseTeamList(json, "nba", "NBA").map((t) => t.espnId)).toEqual(
-            ["1"],
-        );
+        expect(parseTeamList(json, "nba", "NBA").map((t) => t.espnId)).toEqual([
+            "1",
+        ]);
     });
 
     it("is empty for a malformed response", () => {
         expect(parseTeamList({}, "nba", "NBA")).toEqual([]);
+    });
+});
+
+describe("divisionStandingsUrl", () => {
+    it("asks the site API for one division's standings", () => {
+        expect(divisionStandingsUrl(FBS_GROUP)).toBe(
+            "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80",
+        );
+    });
+});
+
+describe("parseStandingsTeamIds", () => {
+    const standings = JSON.stringify({
+        name: "FBS",
+        children: [
+            {
+                name: "American",
+                standings: {
+                    entries: [
+                        { team: { id: "2084", location: "Buffalo" }, stats: [{ name: "wins", value: 7 }] },
+                        { team: { id: "58", location: "South Florida" }, stats: [] },
+                    ],
+                },
+            },
+            { name: "Big Ten", standings: { entries: [{ team: { id: "264" }, stats: [] }] } },
+        ],
+    });
+
+    it("collects every team id across the conference standings", () => {
+        expect([...parseStandingsTeamIds(standings)]).toEqual(["2084", "58", "264"]);
+    });
+
+    it("is empty for a missing or unrecognized body", () => {
+        expect(parseStandingsTeamIds(null).size).toBe(0);
+        expect(parseStandingsTeamIds('{"teams":[{"id":"1"}]}').size).toBe(0);
     });
 });

@@ -17,12 +17,16 @@ import {
 } from "./lib/localization.js";
 import { classifyNextGameCache, selectNextGame } from "./lib/schedule.js";
 import { formatEvent } from "./lib/format.js";
-import { searchTeams } from "./lib/search.js";
+import { searchTeams, searchTier } from "./lib/search.js";
 import { computeBadgeStats, NO_BADGE_TRIM } from "./lib/badge.js";
 import { classifyClient, classifySource } from "./lib/client.js";
 import {
+    divisionStandingsUrl,
+    FBS_GROUP,
+    FCS_GROUP,
     mergeSchedules,
     nextSeasonUrl,
+    parseStandingsTeamIds,
     parseSchedule,
     parseTeam,
     parseTeamList,
@@ -171,7 +175,7 @@ async function fetchTeamMeta(teamId, env, hostname, ctx) {
 
 // Every supported team, built from one ESPN list call per league and cached per POP, so search is a local substring scan.
 async function getTeamIndex(env, hostname, ctx, m) {
-    const key = buildCacheKey(hostname, "/_team-index-espn", {});
+    const key = buildCacheKey(hostname, "/_team-index-espn-v2", {});
     const cached = await caches.default.match(key);
     if (cached) return await cached.json();
     m.cache = "rebuild";
@@ -182,18 +186,38 @@ async function getTeamIndex(env, hostname, ctx, m) {
             espnFetch(teamsUrl(ESPN_LEAGUES[code]), env, hostname, ctx, m),
         ),
     );
+    const missing = lists.filter((json) => !json).length;
+    if (missing === codes.length) return [];
+
+    const divisions = await fetchCfbDivisions(env, hostname, ctx, m);
+    if (missing > 0 || !divisions) m.upstream = "partial";
+
     const index = lists.flatMap((json, i) =>
         json ? parseTeamList(json, codes[i], ESPN_LEAGUES[codes[i]].label) : [],
     );
-
-    const missing = lists.filter((json) => !json).length;
-    if (missing > 0 && missing < codes.length) m.upstream = "partial";
-    if (missing === codes.length) return [];
+    for (const team of index) {
+        team.tier = searchTier(team, divisions ?? { fbs: NO_IDS, fcs: NO_IDS });
+    }
 
     ctx.waitUntil(
         caches.default.put(key, cacheEntry(index, TEAM_INDEX_CACHE_TTL)),
     );
     return index;
+}
+
+const NO_IDS = new Set();
+
+// → { fbs, fcs } id sets, or null when either is unavailable or parses empty.
+async function fetchCfbDivisions(env, hostname, ctx, m) {
+    const [fbs, fcs] = await Promise.all(
+        [FBS_GROUP, FCS_GROUP].map(async (group) =>
+            parseStandingsTeamIds(
+                await espnFetch(divisionStandingsUrl(group), env, hostname, ctx, m, (res) => res.text()),
+            ),
+        ),
+    );
+    if (fbs.size === 0 || fcs.size === 0) return null;
+    return { fbs, fcs };
 }
 
 // GET /teams?q=SEARCH_TERM, or POST { query } from xhrSelectSearch.
@@ -214,7 +238,7 @@ async function handleTeamsSearch(url, request, env, ctx, m) {
     }
     const q = qRaw.toLowerCase();
 
-    const key = buildCacheKey(url.hostname, "/teams", { q, v: "espn" });
+    const key = buildCacheKey(url.hostname, "/teams", { q, v: "espn-tiers" });
     const cached = await caches.default.match(key);
     // Stamp BEFORE returning the cached Response — it carries no metadata.
     if (cached) {
@@ -286,7 +310,7 @@ function cacheEntry(payload, maxAgeS, fetchedAtMs = Date.now()) {
 }
 
 // One outbound ESPN call, gated by the per-colo cooldown and our own rate limit. Never throws.
-async function espnFetch(url, env, hostname, ctx, m) {
+async function espnFetch(url, env, hostname, ctx, m, read = (res) => res.json()) {
     const cooldownKey = buildCacheKey(hostname, "/_espn-cooldown", {});
     if (await caches.default.match(cooldownKey)) {
         m.upstream = "cooldown";
@@ -304,7 +328,7 @@ async function espnFetch(url, env, hostname, ctx, m) {
     try {
         const res = await fetch(url);
         if (res.ok) {
-            const body = await res.json();
+            const body = await read(res);
             if (m.upstream === "none") m.upstream = "ok";
             return body;
         }
